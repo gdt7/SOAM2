@@ -76,7 +76,9 @@ String eventos_string[] = {"EV_PULSADOR", "EV_TIMEOUT", "EV_LEER_RIFD", "EV_NO_A
 void start();
 void tomar_evento();
 void moverServo(int);
-void verificarPulsador();
+bool verificarPulsador();
+bool verificarRIFD();
+bool verificarSensorProximidad();
 void log(String mensaje);
 
 void none()
@@ -112,9 +114,9 @@ transition state_table[MAX_ESTADOS][MAX_EVENTOS] =
     {
         {pasar_a_barrera_abierta, none, pasar_a_esperando_respuesta, none, none, pasar_a_barrera_abierta, none}, // state ST_IDLE
         {none, pasar_a_idle, none, pasar_a_idle, pasar_a_barrera_abierta, none, none},                           // state ST_ESPERANDO_RESPUESTA
-        {pasar_a_idle, pasar_a_idle, none, none, none, pasar_a_idle, none}                                       // state ST_BARRERA_ABIERTA
+        {pasar_a_idle, pasar_a_idle, none, none, none, none, none}                                       // state ST_BARRERA_ABIERTA
 };
-
+// EVENTOS {"EV_PULSADOR", "EV_TIMEOUT", "EV_LEER_RIFD", "EV_NO_AUTORIZADO", "EV_AUTORIZADO", "EV_DISTANCIA", "EV_CONTINUAR"};
 /**********************************************************************************************/
 
 void setup()
@@ -254,7 +256,7 @@ bool verificarSensorProximidad()
 
   float valor_actual = sensores[SENSOR_PROXIMIDAD].valor_actual;
 
-  if(valor_actual > UMBRAL_DISTANCIA_CM)
+  if(valor_actual < UMBRAL_DISTANCIA_CM)
   {
     nuevo_evento = EV_DISTANCIA;
     return true;
@@ -277,5 +279,3 @@ bool verificarRIFD()
   }
   return false;
 }
-
-
