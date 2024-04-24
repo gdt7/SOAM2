@@ -46,8 +46,8 @@
     }
   ],
   "connections": [
-    [ "esp:TX0", "$serialMonitor:RX", "", [] ],
-    [ "esp:RX0", "$serialMonitor:TX", "", [] ],
+    [ "esp1:TX0", "$serialMonitor:RX", "", [] ],
+    [ "esp1:RX0", "$serialMonitor:TX", "", [] ],
     [ "bb1:bn.43", "servo1:GND", "black", [ "v0" ] ],
     [ "bb1:bp.45", "servo1:V+", "red", [ "v0" ] ],
     [ "btn1:1.r", "bb1:1b.f", "red", [ "v0" ] ],
