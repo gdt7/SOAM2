@@ -175,6 +175,21 @@ void start()
 void fsm()
 {
   tomar_evento();
+
+  if(nuevo_evento >= 0 && nuevo_evento < MAX_EVENTOS && estado_actual >= 0 && estado_actual < MAX_ESTADOS)
+  {
+    if( nuevo_evento != EV_CONTINUAR )
+    {
+      //DebugPrintEstado(states_s[estado_actual], events_s[nuevo_evento]);
+    }
+    state_table[estado_actual][nuevo_evento]();
+  } else 
+  {
+    /*HACER: Loguear errores*/
+    //DebugPrintEstado(estados_string[ST_ERROR], eventos_string[EV_UNKNOW]);
+  }
+
+  nuevo_evento   = EV_CONTINUAR;
 }
 
 void tomar_evento()
