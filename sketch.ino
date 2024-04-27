@@ -4,6 +4,13 @@
 // #include <MFRC522.h>
 #include <LiquidCrystal.h>
 
+#define TONE_USE_INT
+#define TONE_PITCH 440
+#include "TonePitch.h"
+
+
+TaskHandle_t Task1;
+
 LiquidCrystal lcd(22, 23, 15, 34, 35, 33);
 #define PIN_PULSADOR_ARRIBA 4
 #define PIN_PULSADOR_ABAJO 12
@@ -20,7 +27,7 @@ LiquidCrystal lcd(22, 23, 15, 34, 35, 33);
 #define TRIG_PIN 19 // ESP32 pin GIOP23 connected to Ultrasonic Sensor's TRIG pin - Pulse to start the measurement
 #define ECHO_PIN 5  // ESP32 pin GIOP22 connected to Ultrasonic Sensor's ECHO pin - Measure the high pulse length to get the distance
 #define LED 2
-#define BUZZER 21
+#define PIN_BUZZER 21
 #define SS_PIN 5   // Pin SS (Slave Select) del lector RFID
 #define RST_PIN 16 // Pin de reinicio del lector RFID
 #define UMBRAL_DIFERENCIA_TIMEOUT 5000 //5 segundos
@@ -101,7 +108,7 @@ void pasar_a_idle()
   // digitalWrite(PIN_PULSADOR, LOW);
   moverServo(ANGULO_NO_PULSADO);
   digitalWrite(LED, LOW);
-  digitalWrite(BUZZER, LOW);
+  // digitalWrite(BUZZER, LOW);
   estado_actual = ST_IDLE;
 }
 
@@ -110,7 +117,7 @@ void pasar_a_barrera_abierta()
     Serial.println("SE PASA A BARRERA ABIERTA");
     moverServo(ANGULO_PULSADO);
     digitalWrite(LED, HIGH);
-    digitalWrite(BUZZER, HIGH);
+    // digitalWrite(BUZZER, HIGH);
     estado_actual = ST_BARRERA_ABIERTA;
 
     if(nuevo_evento == EV_PULSADOR_ARRIBA){
@@ -236,7 +243,7 @@ void start()
   pinMode(LED, OUTPUT);
   {
   }
-  pinMode(BUZZER, OUTPUT);
+  pinMode(PIN_BUZZER, OUTPUT);
   //lcd.begin(16, 2);
   timeout = false;
   lct = millis(); // Guarda el tiempo actual al inicio
@@ -245,6 +252,16 @@ void start()
 
   Serial.print("LCT: ");
   Serial.println(lct);
+  /*xTaskCreatePinnedToCore(
+                    TaskPlayBoot,   //Task function. 
+                    "boot",     // name of task. 
+                    1000,       // Stack size of task 
+                    NULL,        // parameter of the task
+                    1,           // priority of the task 
+                    &Task1,      // Task handle to keep track of created task 
+                    1);
+  */
+  
   //Serial.println("EVENTO EN START: " + eventos_string[nuevo_evento]);
 }
 
@@ -447,4 +464,42 @@ bool stimeout(unsigned long intervalo) {
   /****************************/ 
   //return (millis() - lct >= intervalo);
 
+}
+
+void play(int *melody, int *durations, int size){
+  for (int note = 0; note < size; note++) {
+    //to calculate the note duration, take one second divided by the note type.
+    //e.g. quarter note = 1000 / 4, eighth note = 1000/8, etc.
+    int duration = 1000 / durations[note];
+    tone(PIN_BUZZER, melody[note], duration);
+
+    //to distinguish the notes, set a minimum time between them.
+    //the note's duration + 30% seems to work well:
+    int pauseBetweenNotes = duration * 1.40;
+    delay(pauseBetweenNotes);
+
+    //stop the tone playing:
+    noTone(PIN_BUZZER);
+  }
+}
+
+void TaskPlayAccessAllow(void * pvParameters) {
+  int melody[] = {NOTE_E4, NOTE_F4, NOTE_G4};
+  int durations[] = {8, 8, 8};
+  play(melody, durations, sizeof(durations) / sizeof(int));
+  vTaskDelete(NULL);
+}
+
+void TaskPlayAccessDenied(void * pvParameters) {
+  int melody[] = {NOTE_G5, NOTE_G5, NOTE_G5};
+  int durations[] = {8, 8, 8};
+  play(melody, durations, sizeof(durations) / sizeof(int));
+  vTaskDelete(NULL);
+}
+
+void TaskPlayBoot(void * pvParameters) {
+  int melody[] = {NOTE_G5, NOTE_F5, NOTE_G5};
+  int durations[] = {4, 8, 4};
+  play(melody, durations, sizeof(durations) / sizeof(int));
+  vTaskDelete(NULL);
 }
