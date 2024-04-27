@@ -315,6 +315,7 @@ bool verificarPulsadorArriba()
     if(valor_actual_aux == HIGH){
       Serial.println("PULSADOR ARRIBA ENCENDIDO!");
       nuevo_evento = EV_PULSADOR_ARRIBA;
+      sensores[SENSOR_PULSADOR_ARRIBA].valor_previo_digital = valor_actual_aux;
       return true;
     }
   }
@@ -344,8 +345,9 @@ bool verificarPulsadorAbajo()
   {
     // ENCENDER PULSADOR
     if(valor_actual_aux == HIGH){
-      Serial.println("PULSADOR ARRIBA ENCENDIDO!");
+      Serial.println("PULSADOR ABAJO ENCENDIDO!");
       nuevo_evento = EV_PULSADOR_ABAJO;
+      sensores[SENSOR_PULSADOR_ABAJO].valor_previo_digital = valor_actual_aux;
       return true;
     }
   }
