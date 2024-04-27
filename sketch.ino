@@ -32,7 +32,10 @@ LiquidCrystal lcd(22, 23, 15, 34, 35, 33);
 #define RST_PIN 16 // Pin de reinicio del lector RFID
 #define UMBRAL_DIFERENCIA_TIMEOUT 5000 //5 segundos
 #define UMBRAL_DISTANCIA_CM 50
-
+#define CARACTER_LEER_RFID 'R'
+#define CARACTER_AUTORIZADO_A_TIEMPO 'A'
+#define CARACTER_AUTORIZADO_TARDE 'T'
+#define CARACTER_NO_AUTORIZADO 'N'
 
 #define ANGULO_PULSADO 0
 #define ANGULO_NO_PULSADO 90
@@ -304,7 +307,8 @@ void tomar_evento()
     timeout = false;
     lct = ct;
   */
-    if(verificarPulsadorAbajo() || verificarPulsadorArriba() ||  verificarSensorProximidad() || verificarRIFD())
+    if(verificarPulsadorAbajo() || verificarPulsadorArriba() ||  
+    verificarSensorProximidad() || verificarEntradaTeclado())
     {
       return;
     }
@@ -425,10 +429,10 @@ bool verificarRIFD()
     char input = Serial.read();
     
     // Imprime la cadena leída en el monitor serial
-    Serial.print("Cadena recibida: ");
+    Serial.print("Caracter recibido: ");
     Serial.println(input);
 
-    if (input == 'R') {
+    if (input == CARACTER_LEER_RFID) {
       nuevo_evento = EV_LEER_RIFD;
       Serial.println("Se está verificando su RFID...");
       return true;
@@ -436,6 +440,38 @@ bool verificarRIFD()
       Serial.println("ERROR. RFID leido incorrectamente");
       return false;
     }
+  }
+  return false;
+}
+
+bool verificarEntradaTeclado()
+{
+  if (Serial.available() > 0) {
+    // Lee la cadena completa del monitor serial
+    char input = Serial.read();
+    
+    // Imprime la cadena leída en el monitor serial
+    Serial.print("Caracter recibido: ");
+    Serial.println(input);
+
+    if (input == CARACTER_LEER_RFID) {
+      nuevo_evento = EV_LEER_RIFD;
+      Serial.println("Se está verificando su RFID...");
+      return true;
+    } else if (input == CARACTER_AUTORIZADO_A_TIEMPO) {
+      Serial.println("Llegó en horario... AUTORIZADO");
+      nuevo_evento = EV_AUTORIZADO;
+      return true;
+    } else if (input == CARACTER_AUTORIZADO_TARDE ) {
+      Serial.println("NO llegó en horario... AUTORIZADO");
+      nuevo_evento = EV_AUTORIZADO;
+      return true;
+    } else if (input == CARACTER_NO_AUTORIZADO) {
+      Serial.println("NO AUTORIZADO");
+      nuevo_evento = EV_NO_AUTORIZADO;
+      return true;
+    }
+    return false;
   }
   return false;
 }
