@@ -17,7 +17,7 @@
       "id": "ultrasonic1",
       "top": -65.7,
       "left": -474.5,
-      "attrs": { "distance": "140" }
+      "attrs": { "distance": "12" }
     },
     { "type": "wokwi-esp32-devkit-v1", "id": "esp1", "top": 148.7, "left": -341, "attrs": {} },
     {
@@ -43,6 +43,13 @@
       "top": 79.2,
       "left": 165,
       "attrs": { "volume": "0.1" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn2",
+      "top": -51.4,
+      "left": 604.8,
+      "attrs": { "color": "red" }
     }
   ],
   "connections": [
@@ -64,8 +71,12 @@
     [ "led1:C", "esp1:GND.2", "black", [ "v0" ] ],
     [ "ultrasonic1:GND", "esp1:GND.1", "black", [ "v0" ] ],
     [ "bz1:2", "esp1:D21", "green", [ "v0" ] ],
-    [ "bz1:1", "esp1:GND.1", "black", [ "v0" ] ]
+    [ "bz1:1", "esp1:GND.1", "black", [ "v0" ] ],
+    [ "btn2:1.l", "bb1:63b.f", "red", [ "h0" ] ],
+    [ "btn2:2.l", "bb1:62b.g", "gold", [ "h0" ] ],
+    [ "esp1:3V3", "bb1:63b.j", "red", [ "v0", "h825.3", "v-230.4", "h-28.8" ] ],
+    [ "esp1:D12", "bb1:62b.j", "gold", [ "h-76.8", "v66.5", "h1027.2", "v-249.6", "h-76.8" ] ]
   ],
-  "serialMonitor": { "display": "terminal", "newline": "lf", "convertEol": false},
+  "serialMonitor": { "display": "terminal", "newline": "lf", "convertEol": false },
   "dependencies": {}
 }

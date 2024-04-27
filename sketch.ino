@@ -5,15 +5,17 @@
 #include <LiquidCrystal.h>
 
 LiquidCrystal lcd(22, 23, 15, 34, 35, 33);
-#define PIN_PULSADOR 4
+#define PIN_PULSADOR_ARRIBA 4
+#define PIN_PULSADOR_ABAJO 12
 #define PIN_SERVO 18
 
-#define MAX_CANT_SENSORES 3
-#define SENSOR_PULSADOR 0
-#define SENSOR_PROXIMIDAD 1
-#define SENSOR_RFID 2
+#define MAX_CANT_SENSORES 4
+#define SENSOR_PULSADOR_ARRIBA 0
+#define SENSOR_PULSADOR_ABAJO 1
+#define SENSOR_PROXIMIDAD 2
+#define SENSOR_RFID 3
 #define MAX_ESTADOS 3
-#define MAX_EVENTOS 7
+#define MAX_EVENTOS 8
 
 #define TRIG_PIN 19 // ESP32 pin GIOP23 connected to Ultrasonic Sensor's TRIG pin - Pulse to start the measurement
 #define ECHO_PIN 5  // ESP32 pin GIOP22 connected to Ultrasonic Sensor's ECHO pin - Measure the high pulse length to get the distance
@@ -36,8 +38,10 @@ struct stSensor
 {
   int pin;
   int estado;
-  long valor_actual;
-  long valor_previo;
+  long valor_actual_analogico;
+  long valor_previo_analogico;
+  int valor_actual_digital;
+  int valor_previo_digital;
 };
 
 // Variables globales
@@ -51,6 +55,7 @@ long tiempoDesde2;
 int ban = 0;
 int ban2 = 0;
 int val = 0;
+int loopCount = 0;
 
 // Definición de los estados
 enum estados
@@ -64,17 +69,16 @@ String estados_string[] = {"ST_IDLE", "ST_ESPERANDO_RESPUESTA", "ST_BARRERA_ABIE
 // Definición de los eventos
 enum eventos
 {
-  EV_PULSADOR,
+  EV_CONTINUAR,
+  EV_PULSADOR_ARRIBA,
+  EV_PULSADOR_ABAJO,
   EV_TIMEOUT,
   EV_LEER_RIFD,
   EV_NO_AUTORIZADO,
   EV_AUTORIZADO,
-  EV_DISTANCIA,
-  EV_CONTINUAR
+  EV_DISTANCIA
 } nuevo_evento;
-String eventos_string[] = {"EV_PULSADOR", "EV_TIMEOUT", "EV_LEER_RIFD", "EV_NO_AUTORIZADO", "EV_AUTORIZADO", "EV_DISTANCIA", "EV_CONTINUAR"};
-
-
+String eventos_string[] = {"EV_CONTINUAR", "EV_PULSADOR", "EV_TIMEOUT", "EV_LEER_RIFD", "EV_NO_AUTORIZADO", "EV_AUTORIZADO", "EV_DISTANCIA"};
 
 // Prototipos de funciones
 void start();
@@ -93,6 +97,7 @@ void none()
 
 void pasar_a_idle()
 {
+  Serial.println("Pasar a Idle");
   // digitalWrite(PIN_PULSADOR, LOW);
   moverServo(ANGULO_NO_PULSADO);
   digitalWrite(LED, LOW);
@@ -102,14 +107,13 @@ void pasar_a_idle()
 
 void pasar_a_barrera_abierta()
 {
+    Serial.println("SE PASA A BARRERA ABIERTA");
     moverServo(ANGULO_PULSADO);
-    // digitalWrite(PIN_PULSADOR, HIGH);
     digitalWrite(LED, HIGH);
     digitalWrite(BUZZER, HIGH);
     estado_actual = ST_BARRERA_ABIERTA;
 
-    if(nuevo_evento == EV_PULSADOR){
-      Serial.println("Se pasa de PULSADOR a CONTINUAR");
+    if(nuevo_evento == EV_PULSADOR_ARRIBA){
       nuevo_evento = EV_CONTINUAR;
       return;
     }
@@ -136,7 +140,10 @@ void pasar_a_barrera_abierta()
 
 void pasar_a_esperando_respuesta()
 {
+  Serial.println("Esperando autorización para poder entrar...");
   estado_actual = ST_ESPERANDO_RESPUESTA;
+  
+  /*estado_actual = ST_ESPERANDO_RESPUESTA;
 
     if(nuevo_evento == EV_PULSADOR){
       nuevo_evento = EV_CONTINUAR;
@@ -164,7 +171,7 @@ void pasar_a_esperando_respuesta()
       }
 
     ban=1;
-  }
+  }*/
 
     
 }
@@ -172,9 +179,9 @@ void pasar_a_esperando_respuesta()
 typedef void (*transition)();
 transition state_table[MAX_ESTADOS][MAX_EVENTOS] =
     {
-        {pasar_a_barrera_abierta, none, pasar_a_esperando_respuesta, none, none, none, pasar_a_idle},//state ST_IDLE
-        {none, pasar_a_idle, pasar_a_esperando_respuesta, pasar_a_idle, pasar_a_barrera_abierta, pasar_a_esperando_respuesta, pasar_a_esperando_respuesta},//state ST_ESPERANDO_RESPUESTA
-        {pasar_a_idle, pasar_a_idle, none, none, none, pasar_a_idle, pasar_a_barrera_abierta} //state ST_BARRERA_ABIERTA
+        {none, pasar_a_barrera_abierta, none, none, pasar_a_esperando_respuesta, none, none, none},//state ST_IDLE
+        {none, none, none, pasar_a_idle, pasar_a_esperando_respuesta, pasar_a_idle, pasar_a_barrera_abierta, none},//state ST_ESPERANDO_RESPUESTA
+        {none, none, pasar_a_idle, pasar_a_idle, none, none, none, pasar_a_idle} //state ST_BARRERA_ABIERTA
 };
 // EVENTOS {"EV_PULSADOR", "EV_TIMEOUT", "EV_LEER_RIFD", "EV_NO_AUTORIZADO", "EV_AUTORIZADO", "EV_DISTANCIA", "EV_CONTINUAR"};
 /**********************************************************************************************/
@@ -187,7 +194,7 @@ void setup()
 void loop()
 {
   fsm();
-
+  loopCount += 1;
   // Verifica si hay una tarjeta RFID presente
   /*if (rfid.isCard()) {
     // Lee el número de serie de la tarjeta RFID
@@ -218,7 +225,8 @@ void start()
   // SPI.begin();      // Inicializa la comunicación SPI
   // rfid_PCD.init();      // Inicializa el lector RFID
   // Asigno los pines a los sensores correspondientes
-  pinMode(PIN_PULSADOR, INPUT);
+  pinMode(PIN_PULSADOR_ARRIBA, INPUT);
+  pinMode(PIN_PULSADOR_ABAJO, INPUT);
 
   // Se configura el pin TRIG como salida para el sensor ultrasónico.
   pinMode(TRIG_PIN, OUTPUT);
@@ -232,16 +240,19 @@ void start()
   //lcd.begin(16, 2);
   timeout = false;
   lct = millis(); // Guarda el tiempo actual al inicio
+  sensores[SENSOR_PULSADOR_ARRIBA].valor_actual_digital = LOW;
+  sensores[SENSOR_PULSADOR_ARRIBA].valor_previo_digital = LOW;
+
   Serial.print("LCT: ");
   Serial.println(lct);
+  //Serial.println("EVENTO EN START: " + eventos_string[nuevo_evento]);
 }
 
 void fsm()
 {
   tomar_evento();
-  Serial.println("ESTADO ACTUAL: " + estados_string[estado_actual]);
-  Serial.println("EVENTO: " + eventos_string[nuevo_evento]);
-  
+  //Serial.println("ESTADO ACTUAL: " + estados_string[estado_actual]);
+  //Serial.println("EVENTO: " + eventos_string[nuevo_evento]);
 
   if(nuevo_evento >= 0 && nuevo_evento < MAX_EVENTOS && estado_actual >= 0 && estado_actual < MAX_ESTADOS)
   {
@@ -276,14 +287,13 @@ void tomar_evento()
     timeout = false;
     lct = ct;
   */
-    if(verificarSensorProximidad() || verificarPulsador())
+    if(verificarPulsadorAbajo() || verificarPulsadorArriba() ||  verificarSensorProximidad() || verificarRIFD())
     {
       return;
     }
   //}
 
-  //nuevo_evento = EV_CONTINUAR;
-  //nuevo_evento = EV_DISTANCIA;
+  nuevo_evento = EV_CONTINUAR;
 }
 
 void moverServo(int angulo)
@@ -292,27 +302,66 @@ void moverServo(int angulo)
   delay(15);
 }
 
-bool verificarPulsador()
+bool verificarPulsadorArriba()
 {
-  
+  sensores[SENSOR_PULSADOR_ARRIBA].valor_actual_digital = digitalRead(PIN_PULSADOR_ARRIBA);
+  int valor_actual_aux = sensores[SENSOR_PULSADOR_ARRIBA].valor_actual_digital;
+  int valor_previo_aux = sensores[SENSOR_PULSADOR_ARRIBA].valor_previo_digital;
+ 
+  // Si hay un cambio en el estado del pulsador
+  if (valor_actual_aux != valor_previo_aux)
+  {
+    // ENCENDER PULSADOR
+    if(valor_actual_aux == HIGH){
+      Serial.println("PULSADOR ARRIBA ENCENDIDO!");
+      nuevo_evento = EV_PULSADOR_ARRIBA;
+      return true;
+    }
+  }
 
-  if (digitalRead(PIN_PULSADOR) == HIGH && val == 0)
+  sensores[SENSOR_PULSADOR_ARRIBA].valor_previo_digital = valor_actual_aux;
+  
+  // else if (valor_actual_aux == HIGH && valor_previo_aux == HIGH)  
+  // {
+  //   //APAGAR PULSADOR
+  //   Serial.println("PULSADOR ARRIBA APAGADO!");
+  //   nuevo_evento = EV_PULSADOR_ARRIBA;
+  //   sensores[SENSOR_PULSADOR_ARRIBA].valor_previo_digital = LOW;
+  //   return true;
+  // }
+  
+  return false;
+}
+
+bool verificarPulsadorAbajo()
+{
+  sensores[SENSOR_PULSADOR_ABAJO].valor_actual_digital = digitalRead(PIN_PULSADOR_ABAJO);
+  int valor_actual_aux = sensores[SENSOR_PULSADOR_ABAJO].valor_actual_digital;
+  int valor_previo_aux = sensores[SENSOR_PULSADOR_ABAJO].valor_previo_digital;
+ 
+  // Si hay un cambio en el estado del pulsador
+  if (valor_actual_aux != valor_previo_aux)
   {
-    Serial.print("PULSADOR ENCENDIDO!");
-    //nuevo_evento = EV_PULSADOR;
-    nuevo_evento = EV_PULSADOR;
-    val = 1;
-    return true;
+    // ENCENDER PULSADOR
+    if(valor_actual_aux == HIGH){
+      Serial.println("PULSADOR ARRIBA ENCENDIDO!");
+      nuevo_evento = EV_PULSADOR_ABAJO;
+      return true;
+    }
   }
-  else if(digitalRead(PIN_PULSADOR) == LOW )
-  {
-    Serial.print("PULSADOR APAGADO!");
-    //nuevo_evento = EV_CONTINUAR;
-    val = 0;
-    return false;
-  }else{
-    return true;
-  }
+
+  sensores[SENSOR_PULSADOR_ABAJO].valor_previo_digital = valor_actual_aux;
+
+  // else if (valor_actual_aux == HIGH && valor_previo_aux == HIGH)  
+  // {
+  //   //APAGAR PULSADOR
+  //   Serial.println("PULSADOR ARRIBA APAGADO!");
+  //   nuevo_evento = EV_PULSADOR_ABAJO;
+  //   sensores[SENSOR_PULSADOR_ABAJO].valor_previo_digital = LOW;
+  //   return true;
+  // }
+  
+  return false;
 }
 
 float leerSensorDistancia()
@@ -334,44 +383,41 @@ float leerSensorDistancia()
 
 bool verificarSensorProximidad()
 {
-  sensores[SENSOR_PROXIMIDAD].valor_actual = leerSensorDistancia();
+  sensores[SENSOR_PROXIMIDAD].valor_actual_analogico = leerSensorDistancia();
 
-   Serial.print("DISTANCIA: ");
-   Serial.println(leerSensorDistancia());
+   //Serial.print("DISTANCIA: ");
+   //Serial.println(leerSensorDistancia());
 
-  float valor_actual = sensores[SENSOR_PROXIMIDAD].valor_actual;
+  float valor_actual = sensores[SENSOR_PROXIMIDAD].valor_actual_analogico;
 
-  if(valor_actual < UMBRAL_DISTANCIA_CM) //si la distancia es menos de 50
+  if(valor_actual > UMBRAL_DISTANCIA_CM) //si la distancia es mayor de 50
   {
-    nuevo_evento = EV_LEER_RIFD; //detecto algo para leer
+    nuevo_evento = EV_DISTANCIA;
     return true;
-  }else{
-
-      if(nuevo_evento != EV_CONTINUAR){ //nuevo_evento != EV_CONTINUAR && 
-        nuevo_evento = EV_DISTANCIA;
-      }
-    
-    return false;
   }
 
+  return false;
 }
 
 bool verificarRIFD()
 {
-  //ACÁ HABRIA QUE VER CÓMO HACEMOS PARA LEER E IDENTIFICAR 
-  sensores[SENSOR_RFID].valor_actual = false;
+  if (Serial.available() > 0) {
+    // Lee la cadena completa del monitor serial
+    char input = Serial.read();
+    
+    // Imprime la cadena leída en el monitor serial
+    Serial.print("Cadena recibida: ");
+    Serial.println(input);
 
-  bool valor_actual = sensores[SENSOR_RFID].valor_actual;
-  /****************************************************************/
-  valor_actual = true; //HARCODEO VALOR TRUE (CAMION AUTORIZADO)
-  if(valor_actual)
-  { 
-    Serial.print("Verificar RFID: TRUE \n");
-    nuevo_evento = EV_AUTORIZADO;
-    return true;
+    if (input == 'R') {
+      nuevo_evento = EV_LEER_RIFD;
+      Serial.println("Se está verificando su RFID...");
+      return true;
+    } else {
+      Serial.println("ERROR. RFID leido incorrectamente");
+      return false;
+    }
   }
-  Serial.print("Verificar RFID: FALSE \n");
-  nuevo_evento = EV_NO_AUTORIZADO;
   return false;
 }
 
