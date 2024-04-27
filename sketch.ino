@@ -259,7 +259,7 @@ void start()
                     NULL,        // parameter of the task
                     1,           // priority of the task 
                     &Task1,      // Task handle to keep track of created task 
-                    1);
+                    0);
   */
   
   //Serial.println("EVENTO EN START: " + eventos_string[nuevo_evento]);
