@@ -100,9 +100,24 @@ bool verificarSensorProximidad();
 void log(String mensaje);
 bool stimeout();
 
-void none()
+void none() //aca verifica el timeout de 5 segundos, 
 {
-  // No se realiza ninguna acción
+  if( nuevo_evento == EV_CONTINUAR && (estado_actual == ST_BARRERA_ABIERTA || estado_actual == ST_ESPERANDO_RESPUESTA) ){
+        if(ban==0)
+        {
+          Serial.println("Primera vez que calcula tiempoDesde");
+          tiempoDesde = millis();
+          ban=1;
+        }
+
+        if (stimeout(UMBRAL_DIFERENCIA_TIMEOUT)) 
+        {
+            ban=0;
+            Serial.println("Han pasado 5 segundos y NO fue autorizado, se retorna al estado IDLE");
+            nuevo_evento = EV_TIMEOUT;
+            pasar_a_idle();
+          }
+      }
 }
 
 void pasar_a_idle()
@@ -193,7 +208,7 @@ transition state_table[MAX_ESTADOS][MAX_EVENTOS] =
         {none, none, none, pasar_a_idle, pasar_a_esperando_respuesta, pasar_a_idle, pasar_a_barrera_abierta, none},//state ST_ESPERANDO_RESPUESTA
         {none, none, pasar_a_idle, pasar_a_idle, none, none, none, pasar_a_idle} //state ST_BARRERA_ABIERTA
 };
-// EVENTOS {"EV_PULSADOR", "EV_TIMEOUT", "EV_LEER_RIFD", "EV_NO_AUTORIZADO", "EV_AUTORIZADO", "EV_DISTANCIA", "EV_CONTINUAR"};
+// EVENTOS {"EV_CONTINUAR", "EV_PULSADOR_ARRIBA", "EV_PULSADOR_ABAJO", "EV_TIMEOUT", "EV_LEER_RFID", "EV_NO_AUTORIZADO", "EV_AUTORIZADO", "EV_DISTANCIA"};
 /**********************************************************************************************/
 
 void setup()
@@ -271,8 +286,8 @@ void start()
 void fsm()
 {
   tomar_evento();
-  //Serial.println("ESTADO ACTUAL: " + estados_string[estado_actual]);
-  //Serial.println("EVENTO: " + eventos_string[nuevo_evento]);
+  Serial.println("ESTADO ACTUAL: " + estados_string[estado_actual]);
+  Serial.println("EVENTO: " + eventos_string[nuevo_evento]);
 
   if(nuevo_evento >= 0 && nuevo_evento < MAX_EVENTOS && estado_actual >= 0 && estado_actual < MAX_ESTADOS)
   {
