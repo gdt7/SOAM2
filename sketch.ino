@@ -2,7 +2,6 @@
 #include <HardwareSerial.h>
 #include <SPI.h>
 // #include <MFRC522.h>
-#include <LiquidCrystal.h>
 
 #define TONE_USE_INT
 #define TONE_PITCH 440
@@ -11,7 +10,6 @@
 
 TaskHandle_t Task1;
 
-LiquidCrystal lcd(22, 23, 15, 34, 35, 33);
 #define PIN_PULSADOR_ARRIBA 4
 #define PIN_PULSADOR_ABAJO 12
 #define PIN_SERVO 18
@@ -262,7 +260,6 @@ void start()
   {
   }
   pinMode(PIN_BUZZER, OUTPUT);
-  //lcd.begin(16, 2);
   timeout = false;
   lct = millis(); // Guarda el tiempo actual al inicio
   sensores[SENSOR_PULSADOR_ARRIBA].valor_actual_digital = LOW;
@@ -278,8 +275,8 @@ void start()
                     1,           // priority of the task 
                     &Task1,      // Task handle to keep track of created task 
                     0);
-  */
-  
+  */  
+
   //Serial.println("EVENTO EN START: " + eventos_string[nuevo_evento]);
 }
 
