@@ -25,6 +25,7 @@ TaskHandle_t Task1;
 #define TRIG_PIN 19 // ESP32 pin GIOP23 connected to Ultrasonic Sensor's TRIG pin - Pulse to start the measurement
 #define ECHO_PIN 5  // ESP32 pin GIOP22 connected to Ultrasonic Sensor's ECHO pin - Measure the high pulse length to get the distance
 #define LED 2
+#define LED_VERDE 15
 #define PIN_BUZZER 21
 #define SS_PIN 5   // Pin SS (Slave Select) del lector RFID
 #define RST_PIN 16 // Pin de reinicio del lector RFID
@@ -138,7 +139,8 @@ void pasar_a_idle()
   Serial.println("Pasar a Idle");
   // digitalWrite(PIN_PULSADOR, LOW);
   moverServo(ANGULO_NO_PULSADO);
-  digitalWrite(LED, LOW);
+  analogWrite(LED, 255);
+  analogWrite(LED_VERDE, 0);
   // digitalWrite(BUZZER, LOW);
   estado_actual = ST_IDLE;
 }
@@ -147,7 +149,9 @@ void pasar_a_barrera_abierta()
 {
     Serial.println("SE PASA A BARRERA ABIERTA");
     moverServo(ANGULO_PULSADO);
-    digitalWrite(LED, HIGH);
+    analogWrite(LED, 0);
+    analogWrite(LED_VERDE, 255);
+    Serial.println("HOLAAAAAAAAAAAAAAAAAAAAAAAAAAA");
     // digitalWrite(BUZZER, HIGH);
     estado_actual = ST_BARRERA_ABIERTA;
 
@@ -262,6 +266,7 @@ void start()
   pinMode(ECHO_PIN, INPUT);
   
   pinMode(LED, OUTPUT);
+  pinMode(LED_VERDE, OUTPUT);
   {
   }
   pinMode(PIN_BUZZER, OUTPUT);

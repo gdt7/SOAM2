@@ -28,15 +28,6 @@
       "rotate": 90,
       "attrs": { "value": "3300" }
     },
-    { "type": "wokwi-led", "id": "led1", "top": 82.8, "left": 42.2, "attrs": { "color": "red" } },
-    {
-      "type": "wokwi-resistor",
-      "id": "r2",
-      "top": 177.6,
-      "left": 37.85,
-      "rotate": 90,
-      "attrs": { "value": "220" }
-    },
     {
       "type": "wokwi-buzzer",
       "id": "bz1",
@@ -50,6 +41,13 @@
       "top": -51.4,
       "left": 604.8,
       "attrs": { "color": "red" }
+    },
+    {
+      "type": "wokwi-rgb-led",
+      "id": "rgb1",
+      "top": 90.4,
+      "left": 29.9,
+      "attrs": { "common": "cathode" }
     }
   ],
   "connections": [
@@ -66,16 +64,16 @@
     [ "ultrasonic1:TRIG", "esp1:D19", "green", [ "v0" ] ],
     [ "ultrasonic1:ECHO", "r1:1", "gold", [ "v0" ] ],
     [ "r1:2", "esp1:D5", "green", [ "h0", "v75.6" ] ],
-    [ "led1:A", "r2:1", "green", [ "v0" ] ],
-    [ "r2:2", "esp1:D2", "yellow", [ "h0", "v85.2" ] ],
-    [ "led1:C", "esp1:GND.2", "black", [ "v0" ] ],
     [ "ultrasonic1:GND", "esp1:GND.1", "black", [ "v0" ] ],
     [ "bz1:2", "esp1:D21", "green", [ "v0" ] ],
     [ "bz1:1", "esp1:GND.1", "black", [ "v0" ] ],
     [ "btn2:1.l", "bb1:63b.f", "red", [ "h0" ] ],
     [ "btn2:2.l", "bb1:62b.g", "gold", [ "h0" ] ],
     [ "esp1:3V3", "bb1:63b.j", "red", [ "v0", "h825.3", "v-230.4", "h-28.8" ] ],
-    [ "esp1:D12", "bb1:62b.j", "gold", [ "h-76.8", "v66.5", "h1027.2", "v-249.6", "h-76.8" ] ]
+    [ "esp1:D12", "bb1:62b.j", "gold", [ "h-76.8", "v66.5", "h1027.2", "v-249.6", "h-76.8" ] ],
+    [ "esp1:D2", "rgb1:R", "red", [ "h0" ] ],
+    [ "rgb1:G", "esp1:D15", "green", [ "v0" ] ],
+    [ "rgb1:COM", "esp1:GND.2", "black", [ "v0" ] ]
   ],
   "serialMonitor": { "display": "terminal", "newline": "lf", "convertEol": false },
   "dependencies": {}
