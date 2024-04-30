@@ -97,6 +97,21 @@ bool verificarRIFD();
 bool verificarSensorProximidad();
 void log(String mensaje);
 bool stimeout();
+void none();
+void pasar_a_idle();
+void pasar_a_barrera_abierta();
+void pasar_a_esperando_respuesta();
+
+
+typedef void (*transition)();
+transition state_table[MAX_ESTADOS][MAX_EVENTOS] =
+    {
+        {none, pasar_a_barrera_abierta, none, none, pasar_a_esperando_respuesta, none, none, none},//state ST_IDLE
+        {none, none, none, pasar_a_idle, pasar_a_esperando_respuesta, pasar_a_idle, pasar_a_barrera_abierta, none},//state ST_ESPERANDO_RESPUESTA
+        {none, pasar_a_barrera_abierta, none, pasar_a_idle, none, none, none, pasar_a_idle} //state ST_BARRERA_ABIERTA
+};
+// EVENTOS {"EV_CONTINUAR", "EV_PULSADOR_ARRIBA", "EV_PULSADOR_ABAJO", "EV_TIMEOUT", "EV_LEER_RFID", "EV_NO_AUTORIZADO", "EV_AUTORIZADO", "EV_DISTANCIA"};
+/**********************************************************************************************/
 
 void none() //aca verifica el timeout de 5 segundos, 
 {
@@ -198,16 +213,6 @@ void pasar_a_esperando_respuesta()
 
     
 }
-
-typedef void (*transition)();
-transition state_table[MAX_ESTADOS][MAX_EVENTOS] =
-    {
-        {none, pasar_a_barrera_abierta, none, none, pasar_a_esperando_respuesta, none, none, none},//state ST_IDLE
-        {none, none, none, pasar_a_idle, pasar_a_esperando_respuesta, pasar_a_idle, pasar_a_barrera_abierta, none},//state ST_ESPERANDO_RESPUESTA
-        {none, none, pasar_a_idle, pasar_a_idle, none, none, none, pasar_a_idle} //state ST_BARRERA_ABIERTA
-};
-// EVENTOS {"EV_CONTINUAR", "EV_PULSADOR_ARRIBA", "EV_PULSADOR_ABAJO", "EV_TIMEOUT", "EV_LEER_RFID", "EV_NO_AUTORIZADO", "EV_AUTORIZADO", "EV_DISTANCIA"};
-/**********************************************************************************************/
 
 void setup()
 {
