@@ -38,6 +38,7 @@ TaskHandle_t Task1;
 
 #define ANGULO_PULSADO 0
 #define ANGULO_NO_PULSADO 90
+#define DEBOUNCE_DELAY 50
 
 // MFRC522 rfid(SS_PIN,RST_PIN);
 // MFRC522::MIFARE_KEY key;
@@ -65,6 +66,7 @@ int ban = 0;
 int ban2 = 0;
 int val = 0;
 int loopCount = 0;
+long previousDebounceTime = 0; 
 
 // Definición de los estados
 enum estados
@@ -109,7 +111,7 @@ transition state_table[MAX_ESTADOS][MAX_EVENTOS] =
     {
         {none, pasar_a_barrera_abierta, none, none, pasar_a_esperando_respuesta, none, none, none},//state ST_IDLE
         {none, none, none, pasar_a_idle, pasar_a_esperando_respuesta, pasar_a_idle, pasar_a_barrera_abierta, none},//state ST_ESPERANDO_RESPUESTA
-        {none, pasar_a_barrera_abierta, none, pasar_a_idle, none, none, none, pasar_a_idle} //state ST_BARRERA_ABIERTA
+        {none, pasar_a_idle, none, pasar_a_idle, none, none, none, pasar_a_idle} //state ST_BARRERA_ABIERTA
 };
 // EVENTOS {"EV_CONTINUAR", "EV_PULSADOR_ARRIBA", "EV_PULSADOR_ABAJO", "EV_TIMEOUT", "EV_LEER_RFID", "EV_NO_AUTORIZADO", "EV_AUTORIZADO", "EV_DISTANCIA"};
 /**********************************************************************************************/
@@ -147,36 +149,26 @@ void pasar_a_idle()
 
 void pasar_a_barrera_abierta()
 {
+  tiempoDesde = millis();
     Serial.println("SE PASA A BARRERA ABIERTA");
     moverServo(ANGULO_PULSADO);
     analogWrite(LED, 0);
     analogWrite(LED_VERDE, 255);
-    Serial.println("HOLAAAAAAAAAAAAAAAAAAAAAAAAAAA");
-    // digitalWrite(BUZZER, HIGH);
+
+    xTaskCreatePinnedToCore(
+                    TaskPlayAccessAllow,   //Task function. 
+                    "boot",     // name of task. 
+                    1000,       // Stack size of task 
+                    NULL,        // parameter of the task
+                    1,           // priority of the task 
+                    &Task1,      // Task handle to keep track of created task 
+                    0);
     estado_actual = ST_BARRERA_ABIERTA;
 
     if(nuevo_evento == EV_PULSADOR_ARRIBA){
       nuevo_evento = EV_CONTINUAR;
       return;
     }
-
-    //Serial.println("Barrera abierta y distancia!");
-
-    
-    /*
-    if(ban2==0){
-      Serial.println("Primera vez que calcula tiempoDesde en barrera abierta");
-      tiempoDesde2 = millis();
-    }
-
-    if (stimeout(UMBRAL_DIFERENCIA_TIMEOUT)) {
-      ban2=0;
-      Serial.println("Han pasado 5 segundos! Se cierra la barrera en caso de no detectar nada!");
-      nuevo_evento = EV_TIMEOUT;
-      pasar_a_idle();
-    }
-      ban2=1;*/
-    
 }
 
 
@@ -277,7 +269,7 @@ void start()
 
   Serial.print("LCT: ");
   Serial.println(lct);
-  /*xTaskCreatePinnedToCore(
+  xTaskCreatePinnedToCore(
                     TaskPlayBoot,   //Task function. 
                     "boot",     // name of task. 
                     1000,       // Stack size of task 
@@ -285,23 +277,21 @@ void start()
                     1,           // priority of the task 
                     &Task1,      // Task handle to keep track of created task 
                     0);
-  */  
-
-  //Serial.println("EVENTO EN START: " + eventos_string[nuevo_evento]);
 }
 
 void fsm()
 {
   tomar_evento();
-  Serial.println("ESTADO ACTUAL: " + estados_string[estado_actual]);
-  Serial.println("EVENTO: " + eventos_string[nuevo_evento]);
 
   if(nuevo_evento >= 0 && nuevo_evento < MAX_EVENTOS && estado_actual >= 0 && estado_actual < MAX_ESTADOS)
   {
-    /*if( nuevo_evento != EV_CONTINUAR )
+    if( nuevo_evento != EV_CONTINUAR )
     {
       //DebugPrintEstado(states_s[estado_actual], events_s[nuevo_evento]);
-    }*/
+      Serial.println("ESTADO ACTUAL: " + estados_string[estado_actual]);
+      Serial.println("EVENTO: " + eventos_string[nuevo_evento]);
+    }
+    
     state_table[estado_actual][nuevo_evento]();
   } else 
   {
@@ -314,27 +304,11 @@ void fsm()
 
 void tomar_evento()
 {
-  /*long ct = millis();
-  int diferencia = (ct - lct); 
-  Serial.print("CT: ");
-  Serial.println(ct);
-
-  Serial.print("DIFERENCIA: ");
-  Serial.println(diferencia);
-
-  timeout = (diferencia > UMBRAL_DIFERENCIA_TIMEOUT) ? (true) : (false);
-  verificarSensorProximidad(); //ver
-  if (timeout)
+  if(verificarPulsadorArriba()
+    || verificarSensorProximidad() || verificarEntradaTeclado())
   {
-    timeout = false;
-    lct = ct;
-  */
-    if(verificarPulsadorAbajo() || verificarPulsadorArriba() ||  
-    verificarSensorProximidad() || verificarEntradaTeclado())
-    {
-      return;
-    }
-  //}
+    return;
+  }
 
   nuevo_evento = EV_CONTINUAR;
 }
@@ -342,7 +316,7 @@ void tomar_evento()
 void moverServo(int angulo)
 {
   Servo1.write(angulo);
-  delay(15);
+  //delay(15);
 }
 
 bool verificarPulsadorArriba()
@@ -352,8 +326,10 @@ bool verificarPulsadorArriba()
   int valor_previo_aux = sensores[SENSOR_PULSADOR_ARRIBA].valor_previo_digital;
  
   // Si hay un cambio en el estado del pulsador
-  if (valor_actual_aux != valor_previo_aux)
+  if ((millis() - previousDebounceTime) > DEBOUNCE_DELAY 
+    && valor_actual_aux != valor_previo_aux)
   {
+    previousDebounceTime = millis(); 
     // ENCENDER PULSADOR
     if(valor_actual_aux == HIGH){
       Serial.println("PULSADOR ARRIBA ENCENDIDO!");
@@ -364,47 +340,6 @@ bool verificarPulsadorArriba()
   }
 
   sensores[SENSOR_PULSADOR_ARRIBA].valor_previo_digital = valor_actual_aux;
-  
-  // else if (valor_actual_aux == HIGH && valor_previo_aux == HIGH)  
-  // {
-  //   //APAGAR PULSADOR
-  //   Serial.println("PULSADOR ARRIBA APAGADO!");
-  //   nuevo_evento = EV_PULSADOR_ARRIBA;
-  //   sensores[SENSOR_PULSADOR_ARRIBA].valor_previo_digital = LOW;
-  //   return true;
-  // }
-  
-  return false;
-}
-
-bool verificarPulsadorAbajo()
-{
-  sensores[SENSOR_PULSADOR_ABAJO].valor_actual_digital = digitalRead(PIN_PULSADOR_ABAJO);
-  int valor_actual_aux = sensores[SENSOR_PULSADOR_ABAJO].valor_actual_digital;
-  int valor_previo_aux = sensores[SENSOR_PULSADOR_ABAJO].valor_previo_digital;
- 
-  // Si hay un cambio en el estado del pulsador
-  if (valor_actual_aux != valor_previo_aux)
-  {
-    // ENCENDER PULSADOR
-    if(valor_actual_aux == HIGH){
-      Serial.println("PULSADOR ABAJO ENCENDIDO!");
-      nuevo_evento = EV_PULSADOR_ABAJO;
-      sensores[SENSOR_PULSADOR_ABAJO].valor_previo_digital = valor_actual_aux;
-      return true;
-    }
-  }
-
-  sensores[SENSOR_PULSADOR_ABAJO].valor_previo_digital = valor_actual_aux;
-
-  // else if (valor_actual_aux == HIGH && valor_previo_aux == HIGH)  
-  // {
-  //   //APAGAR PULSADOR
-  //   Serial.println("PULSADOR ARRIBA APAGADO!");
-  //   nuevo_evento = EV_PULSADOR_ABAJO;
-  //   sensores[SENSOR_PULSADOR_ABAJO].valor_previo_digital = LOW;
-  //   return true;
-  // }
   
   return false;
 }
@@ -429,9 +364,6 @@ float leerSensorDistancia()
 bool verificarSensorProximidad()
 {
   sensores[SENSOR_PROXIMIDAD].valor_actual_analogico = leerSensorDistancia();
-
-   //Serial.print("DISTANCIA: ");
-   //Serial.println(leerSensorDistancia());
 
   float valor_actual = sensores[SENSOR_PROXIMIDAD].valor_actual_analogico;
 
@@ -501,22 +433,22 @@ bool verificarEntradaTeclado()
 
 bool stimeout(unsigned long intervalo) {
   /****************************/ 
-    Serial.print("tiempo desde: ");
-    Serial.println(tiempoDesde);
+    //Serial.print("tiempo desde: ");
+    //Serial.println(tiempoDesde);
 
     long tiempoHastaAhora = millis(); //desde que se inicio el programa
-    Serial.print("tiempo hasta ahora: ");
-    Serial.println(tiempoHastaAhora);
+    //Serial.print("tiempo hasta ahora: ");
+    //Serial.println(tiempoHastaAhora);
 
     long tiempoQuePaso = tiempoHastaAhora - tiempoDesde;
-    Serial.print("tiempo que paso: ");
-    Serial.println(tiempoQuePaso);
+    //Serial.print("tiempo que paso: ");
+    //Serial.println(tiempoQuePaso);
 
     if(tiempoQuePaso > intervalo){
-      Serial.println("Retorna TRUE");
+      //Serial.println("Retorna TRUE");
         return true;
     }else{
-      Serial.println("Retorna FALSE");
+      //Serial.println("Retorna FALSE");
         return false;
     }
   /****************************/ 
@@ -529,15 +461,17 @@ void play(int *melody, int *durations, int size){
     //to calculate the note duration, take one second divided by the note type.
     //e.g. quarter note = 1000 / 4, eighth note = 1000/8, etc.
     int duration = 1000 / durations[note];
-    tone(PIN_BUZZER, melody[note], duration);
-
+    //tone(PIN_BUZZER, melody[note], duration);
+    analogWrite(PIN_BUZZER, note);
+    vTaskDelay(200);
+    analogWrite(PIN_BUZZER, 0);
     //to distinguish the notes, set a minimum time between them.
     //the note's duration + 30% seems to work well:
     int pauseBetweenNotes = duration * 1.40;
-    delay(pauseBetweenNotes);
+    vTaskDelay(200);
 
     //stop the tone playing:
-    noTone(PIN_BUZZER);
+    //noTone(PIN_BUZZER);
   }
 }
 
