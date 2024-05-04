@@ -7,7 +7,6 @@
 #define TONE_PITCH 440
 #include "TonePitch.h"
 
-
 TaskHandle_t Task1;
 
 #define PIN_PULSADOR_ARRIBA 4
@@ -22,8 +21,8 @@ TaskHandle_t Task1;
 #define MAX_ESTADOS 3
 #define MAX_EVENTOS 8
 
-#define TRIG_PIN 19 // ESP32 pin GIOP23 connected to Ultrasonic Sensor's TRIG pin - Pulse to start the measurement
-#define ECHO_PIN 5  // ESP32 pin GIOP22 connected to Ultrasonic Sensor's ECHO pin - Measure the high pulse length to get the distance
+#define TRIG_PIN 19 // Ultrasonic Sensor's TRIG pin - Pulso para comenzar con medición
+#define ECHO_PIN 5  // Ultrasonic Sensor's ECHO pin - Mide el largo del pulso para obtener la distancia
 #define LED 2
 #define LED_VERDE 15
 #define PIN_BUZZER 21
@@ -39,6 +38,8 @@ TaskHandle_t Task1;
 #define ANGULO_PULSADO 0
 #define ANGULO_NO_PULSADO 90
 #define DEBOUNCE_DELAY 50
+
+#define CORE_ZERO 0
 
 // MFRC522 rfid(SS_PIN,RST_PIN);
 // MFRC522::MIFARE_KEY key;
@@ -62,11 +63,9 @@ bool timeout;
 long lct;
 long tiempoDesde;
 long tiempoDesde2;
-int ban = 0;
-int ban2 = 0;
-int val = 0;
-int loopCount = 0;
+
 long previousDebounceTime = 0; 
+int ban = 0;
 
 // Definición de los estados
 enum estados
@@ -119,21 +118,20 @@ transition state_table[MAX_ESTADOS][MAX_EVENTOS] =
 void none() //aca verifica el timeout de 5 segundos, 
 {
   if( nuevo_evento == EV_CONTINUAR && (estado_actual == ST_BARRERA_ABIERTA || estado_actual == ST_ESPERANDO_RESPUESTA) ){
-        if(ban==0)
-        {
-          Serial.println("Primera vez que calcula tiempoDesde");
-          tiempoDesde = millis();
-          ban=1;
-        }
-
-        if (stimeout(UMBRAL_DIFERENCIA_TIMEOUT)) 
-        {
-            ban=0;
-            Serial.println("Han pasado 5 segundos y NO fue autorizado, se retorna al estado IDLE");
-            nuevo_evento = EV_TIMEOUT;
-            pasar_a_idle();
-          }
-      }
+    if(ban==0)
+    {
+      Serial.println("Primera vez que calcula tiempoDesde");
+      tiempoDesde = millis();
+      ban = 1;
+    }
+    if (stimeout(UMBRAL_DIFERENCIA_TIMEOUT)) 
+    {
+      ban = 0;
+      Serial.println("Han pasado 5 segundos y NO fue autorizado, se retorna al estado IDLE");
+      nuevo_evento = EV_TIMEOUT;
+      pasar_a_idle();
+    }
+  }
 }
 
 void pasar_a_idle()
@@ -155,14 +153,6 @@ void pasar_a_barrera_abierta()
     analogWrite(LED, 0);
     analogWrite(LED_VERDE, 255);
 
-    xTaskCreatePinnedToCore(
-                    TaskPlayAccessAllow,   //Task function. 
-                    "boot",     // name of task. 
-                    1000,       // Stack size of task 
-                    NULL,        // parameter of the task
-                    1,           // priority of the task 
-                    &Task1,      // Task handle to keep track of created task 
-                    0);
     estado_actual = ST_BARRERA_ABIERTA;
 
     if(nuevo_evento == EV_PULSADOR_ARRIBA){
@@ -175,39 +165,7 @@ void pasar_a_barrera_abierta()
 void pasar_a_esperando_respuesta()
 {
   Serial.println("Esperando autorización para poder entrar...");
-  estado_actual = ST_ESPERANDO_RESPUESTA;
-  
-  /*estado_actual = ST_ESPERANDO_RESPUESTA;
-
-    if(nuevo_evento == EV_PULSADOR){
-      nuevo_evento = EV_CONTINUAR;
-      return;
-    }
-
-    //Serial.print("BAN: ");
-    //Serial.println(ban);
-  if(ban==0){
-    //Serial.println("Primera vez que calcula tiempoDesde");
-    tiempoDesde = millis();
-  }
-
-  if (stimeout(UMBRAL_DIFERENCIA_TIMEOUT)) {//|| verificarRIFD()) {
-    ban=0;
-    Serial.println("Han pasado 5 segundos y NO fue autorizado, se retorna al estado IDLE");
-    nuevo_evento = EV_TIMEOUT;
-    pasar_a_idle();
-  }else{
-
-      if(verificarRIFD()){
-        Serial.println("Camion autorizado!");
-        pasar_a_barrera_abierta();
-        return;
-      }
-
-    ban=1;
-  }*/
-
-    
+  estado_actual = ST_ESPERANDO_RESPUESTA;   
 }
 
 void setup()
@@ -218,26 +176,6 @@ void setup()
 void loop()
 {
   fsm();
-  loopCount += 1;
-  // Verifica si hay una tarjeta RFID presente
-  /*if (rfid.isCard()) {
-    // Lee el número de serie de la tarjeta RFID
-    if (rfid.readCardSerial()) {
-      Serial.print("Tarjeta detectada: ");
-      // Imprime el número de serie de la tarjeta RFID
-      Serial.print(rfid.serNum[0], DEC);
-      Serial.print(" ");
-      Serial.print(rfid.serNum[1], DEC);
-      Serial.print(" ");
-      Serial.print(rfid.serNum[2], DEC);
-      Serial.print(" ");
-      Serial.print(rfid.serNum[3], DEC);
-      Serial.print(" ");
-      Serial.println(rfid.serNum[4], DEC);
-    }
-  }
-  delay(1000); // Espera un segundo antes de la próxima lectura
-  */
 }
 
 void start()
@@ -269,14 +207,7 @@ void start()
 
   Serial.print("LCT: ");
   Serial.println(lct);
-  xTaskCreatePinnedToCore(
-                    TaskPlayBoot,   //Task function. 
-                    "boot",     // name of task. 
-                    1000,       // Stack size of task 
-                    NULL,        // parameter of the task
-                    1,           // priority of the task 
-                    &Task1,      // Task handle to keep track of created task 
-                    0);
+  playTuneSecondCore(TaskPlayBoot, "boot");
 }
 
 void fsm()
@@ -291,7 +222,7 @@ void fsm()
       Serial.println("ESTADO ACTUAL: " + estados_string[estado_actual]);
       Serial.println("EVENTO: " + eventos_string[nuevo_evento]);
     }
-    
+
     state_table[estado_actual][nuevo_evento]();
   } else 
   {
@@ -316,7 +247,6 @@ void tomar_evento()
 void moverServo(int angulo)
 {
   Servo1.write(angulo);
-  //delay(15);
 }
 
 bool verificarPulsadorArriba()
@@ -419,10 +349,12 @@ bool verificarEntradaTeclado()
     } else if (input == CARACTER_AUTORIZADO_TARDE ) {
       Serial.println("NO llegó en horario... AUTORIZADO");
       nuevo_evento = EV_AUTORIZADO;
+      playTuneSecondCore(TaskPlayAccessAllow, "Late");
       return true;
     } else if (input == CARACTER_NO_AUTORIZADO) {
       Serial.println("NO AUTORIZADO");
       nuevo_evento = EV_NO_AUTORIZADO;
+      playTuneSecondCore(TaskPlayAccessDenied, "Denied");      
       return true;
     }
     return false;
@@ -444,52 +376,74 @@ bool stimeout(unsigned long intervalo) {
     //Serial.print("tiempo que paso: ");
     //Serial.println(tiempoQuePaso);
 
-    if(tiempoQuePaso > intervalo){
+    if(tiempoQuePaso > intervalo)
+    {
       //Serial.println("Retorna TRUE");
-        return true;
+      return true;
     }else{
       //Serial.println("Retorna FALSE");
-        return false;
+      return false;
     }
   /****************************/ 
   //return (millis() - lct >= intervalo);
 
 }
 
-void play(int *melody, int *durations, int size){
-  for (int note = 0; note < size; note++) {
-    //to calculate the note duration, take one second divided by the note type.
-    //e.g. quarter note = 1000 / 4, eighth note = 1000/8, etc.
-    int duration = 1000 / durations[note];
-    //tone(PIN_BUZZER, melody[note], duration);
-    analogWrite(PIN_BUZZER, note);
-    vTaskDelay(200);
-    analogWrite(PIN_BUZZER, 0);
-    //to distinguish the notes, set a minimum time between them.
-    //the note's duration + 30% seems to work well:
-    int pauseBetweenNotes = duration * 1.40;
-    vTaskDelay(200);
+void customTone(byte pin, uint16_t frequency, uint16_t duration)
+{
+  unsigned long startTime=millis();
+  unsigned long halfPeriod= 1000000L/frequency/2;
+  pinMode(pin,OUTPUT);
+  while (millis()-startTime< duration)
+  {
+    digitalWrite(pin,HIGH);
+    delayMicroseconds(halfPeriod);
+    digitalWrite(pin,LOW);
+    delayMicroseconds(halfPeriod);
+  }
+  pinMode(pin,INPUT);
+}
 
-    //stop the tone playing:
-    //noTone(PIN_BUZZER);
+void play(int *melody, int *durations, int size)
+{
+  for (int note = 0; note < size; note++)
+  {
+    // Para calcular la duración de la nota, se divide un segundo por la duración de la nota
+    int duration = 1000 / durations[note];
+    customTone(PIN_BUZZER, melody[note], duration);
   }
 }
 
-void TaskPlayAccessAllow(void * pvParameters) {
+void playTuneSecondCore(TaskFunction_t pvTaskCode, const char *constpcName)
+{
+  xTaskCreatePinnedToCore(
+                    pvTaskCode,  // Función de la tarea
+                    constpcName, // Nombre de la tarea. 
+                    1000,        // Tamaño del Stack de la tarea 
+                    NULL,        // Parametros de la tarea
+                    1,           // Prioridad de la tarea
+                    &Task1,      // Handle de la tarea, para seguirla al ser creada
+                    CORE_ZERO);
+}
+
+void TaskPlayAccessAllow(void * pvParameters)
+{
   int melody[] = {NOTE_E4, NOTE_F4, NOTE_G4};
   int durations[] = {8, 8, 8};
   play(melody, durations, sizeof(durations) / sizeof(int));
   vTaskDelete(NULL);
 }
 
-void TaskPlayAccessDenied(void * pvParameters) {
+void TaskPlayAccessDenied(void * pvParameters)
+{
   int melody[] = {NOTE_G5, NOTE_G5, NOTE_G5};
   int durations[] = {8, 8, 8};
   play(melody, durations, sizeof(durations) / sizeof(int));
   vTaskDelete(NULL);
 }
 
-void TaskPlayBoot(void * pvParameters) {
+void TaskPlayBoot(void * pvParameters)
+{
   int melody[] = {NOTE_G5, NOTE_F5, NOTE_G5};
   int durations[] = {4, 8, 4};
   play(melody, durations, sizeof(durations) / sizeof(int));
