@@ -79,8 +79,7 @@ String estados_string[] = {"ST_IDLE", "ST_ESPERANDO_RESPUESTA", "ST_BARRERA_ABIE
 enum eventos
 {
   EV_CONTINUAR,
-  EV_PULSADOR_ARRIBA,
-  EV_PULSADOR_ABAJO,
+  EV_PULSADOR,
   EV_TIMEOUT,
   EV_LEER_RIFD,
   EV_NO_AUTORIZADO,
@@ -107,11 +106,11 @@ void pasar_a_esperando_respuesta();
 typedef void (*transition)();
 transition state_table[MAX_ESTADOS][MAX_EVENTOS] =
     {
-        {none, pasar_a_barrera_abierta, none, none, pasar_a_esperando_respuesta, none, none, none},//state ST_IDLE
-        {none, none, none, pasar_a_idle, pasar_a_esperando_respuesta, pasar_a_idle, pasar_a_barrera_abierta, none},//state ST_ESPERANDO_RESPUESTA
-        {none, pasar_a_idle, none, pasar_a_idle, none, none, none, pasar_a_idle} //state ST_BARRERA_ABIERTA
+        {none, pasar_a_barrera_abierta, none, pasar_a_esperando_respuesta, none, none, none},//state ST_IDLE
+        {none, none, pasar_a_idle, pasar_a_esperando_respuesta, pasar_a_idle, pasar_a_barrera_abierta, none},//state ST_ESPERANDO_RESPUESTA
+        {none, pasar_a_idle, pasar_a_idle, none, none, none, pasar_a_idle} //state ST_BARRERA_ABIERTA
 };
-// EVENTOS {"EV_CONTINUAR", "EV_PULSADOR_ARRIBA", "EV_PULSADOR_ABAJO", "EV_TIMEOUT", "EV_LEER_RFID", "EV_NO_AUTORIZADO", "EV_AUTORIZADO", "EV_DISTANCIA"};
+// EVENTOS {"EV_CONTINUAR", "EV_PULSADOR", "EV_TIMEOUT", "EV_LEER_RFID", "EV_NO_AUTORIZADO", "EV_AUTORIZADO", "EV_DISTANCIA"};
 /**********************************************************************************************/
 
 void none() //aca verifica el timeout de 5 segundos, 
@@ -154,7 +153,7 @@ void pasar_a_barrera_abierta()
 
     estado_actual = ST_BARRERA_ABIERTA;
 
-    if(nuevo_evento == EV_PULSADOR_ARRIBA){
+    if(nuevo_evento == EV_PULSADOR){
       nuevo_evento = EV_CONTINUAR;
       return;
     }
@@ -263,7 +262,7 @@ bool verificarPulsadorArriba()
     // ENCENDER PULSADOR
     if(valor_actual_aux == HIGH){
       Serial.println("PULSADOR ARRIBA ENCENDIDO!");
-      nuevo_evento = EV_PULSADOR_ARRIBA;
+      nuevo_evento = EV_PULSADOR;
       sensores[SENSOR_PULSADOR_ARRIBA].valor_previo_digital = valor_actual_aux;
       return true;
     }
