@@ -23,7 +23,7 @@ TaskHandle_t Task1;
 
 #define TRIG_PIN 19 // Ultrasonic Sensor's TRIG pin - Pulso para comenzar con medición
 #define ECHO_PIN 5  // Ultrasonic Sensor's ECHO pin - Mide el largo del pulso para obtener la distancia
-#define LED 2
+#define LED_ROJO 2
 #define LED_VERDE 15
 #define PIN_BUZZER 21
 #define SS_PIN 5   // Pin SS (Slave Select) del lector RFID
@@ -37,7 +37,7 @@ TaskHandle_t Task1;
 
 #define ANGULO_PULSADO 0
 #define ANGULO_NO_PULSADO 90
-#define DEBOUNCE_DELAY 50
+#define DEBOUNCE_DELAY 100
 
 #define CORE_ZERO 0
 
@@ -59,7 +59,6 @@ struct stSensor
 stSensor sensores[MAX_CANT_SENSORES];
 Servo Servo1;
 float duration_us, distance_cm;
-bool timeout;
 long lct;
 long tiempoDesde;
 long tiempoDesde2;
@@ -139,7 +138,7 @@ void pasar_a_idle()
   Serial.println("Pasar a Idle");
   // digitalWrite(PIN_PULSADOR, LOW);
   moverServo(ANGULO_NO_PULSADO);
-  analogWrite(LED, 255);
+  analogWrite(LED_ROJO, 255);
   analogWrite(LED_VERDE, 0);
   // digitalWrite(BUZZER, LOW);
   estado_actual = ST_IDLE;
@@ -150,7 +149,7 @@ void pasar_a_barrera_abierta()
   tiempoDesde = millis();
     Serial.println("SE PASA A BARRERA ABIERTA");
     moverServo(ANGULO_PULSADO);
-    analogWrite(LED, 0);
+    analogWrite(LED_ROJO, 0);
     analogWrite(LED_VERDE, 255);
 
     estado_actual = ST_BARRERA_ABIERTA;
@@ -195,12 +194,13 @@ void start()
   // Se configura el pin ECHO como entrada para el sensor ultrasónico.
   pinMode(ECHO_PIN, INPUT);
   
-  pinMode(LED, OUTPUT);
+  pinMode(LED_ROJO, OUTPUT);
   pinMode(LED_VERDE, OUTPUT);
-  {
-  }
+
   pinMode(PIN_BUZZER, OUTPUT);
-  timeout = false;
+
+  analogWrite(LED_ROJO, 255);
+
   lct = millis(); // Guarda el tiempo actual al inicio
   sensores[SENSOR_PULSADOR_ARRIBA].valor_actual_digital = LOW;
   sensores[SENSOR_PULSADOR_ARRIBA].valor_previo_digital = LOW;
