@@ -118,14 +118,7 @@ transition state_table[MAX_ESTADOS][MAX_EVENTOS] =
 
 void none() //aca verifica el timeout de 5 segundos, 
 {
-  if( nuevo_evento == EV_CONTINUAR && (estado_actual == ST_BARRERA_ABIERTA || estado_actual == ST_ESPERANDO_RESPUESTA) ){
-    if (stimeout(UMBRAL_DIFERENCIA_TIMEOUT)) 
-    {
-      Serial.println("Han pasado 5 segundos y NO fue autorizado, se retorna al estado IDLE");
-      nuevo_evento = EV_TIMEOUT;
-      pasar_a_idle();
-    }
-  }
+
 }
 
 void pasar_a_idle()
@@ -235,6 +228,15 @@ void tomar_evento()
     || verificarSensorProximidad() || verificarEntradaTeclado())
   {
     return;
+  }
+
+  if((estado_actual == ST_BARRERA_ABIERTA || estado_actual == ST_ESPERANDO_RESPUESTA) ){
+    if (stimeout(UMBRAL_DIFERENCIA_TIMEOUT)) 
+    {
+      Serial.println("Han pasado 5 segundos y NO fue autorizado, se retorna al estado IDLE");
+      nuevo_evento = EV_TIMEOUT;
+      return;
+    }
   }
 
   nuevo_evento = EV_CONTINUAR;
