@@ -42,8 +42,8 @@ TaskHandle_t Task1;
 #define CORE_ZERO 0
 #define TASK_STACK_SIZE 1000
 #define TASK_PRIORITY 1
-#define D_NOTA 8
-#define D_MEDIA_NOTA 4
+#define D_NOTA 4
+#define D_MEDIA_NOTA 8
 
 // MFRC522 rfid(SS_PIN,RST_PIN);
 // MFRC522::MIFARE_KEY key;
