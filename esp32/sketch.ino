@@ -40,6 +40,10 @@ TaskHandle_t Task1;
 #define DEBOUNCE_DELAY 100
 
 #define CORE_ZERO 0
+#define TASK_STACK_SIZE 1000
+#define TASK_PRIORITY 1
+#define D_NOTA 8
+#define D_MEDIA_NOTA 4
 
 // MFRC522 rfid(SS_PIN,RST_PIN);
 // MFRC522::MIFARE_KEY key;
@@ -64,7 +68,6 @@ long tiempoDesde;
 long tiempoDesde2;
 
 long previousDebounceTime = 0; 
-int ban = 0;
 
 // Definición de los estados
 enum estados
@@ -116,15 +119,8 @@ transition state_table[MAX_ESTADOS][MAX_EVENTOS] =
 void none() //aca verifica el timeout de 5 segundos, 
 {
   if( nuevo_evento == EV_CONTINUAR && (estado_actual == ST_BARRERA_ABIERTA || estado_actual == ST_ESPERANDO_RESPUESTA) ){
-    if(ban==0)
-    {
-      Serial.println("Primera vez que calcula tiempoDesde");
-      tiempoDesde = millis();
-      ban = 1;
-    }
     if (stimeout(UMBRAL_DIFERENCIA_TIMEOUT)) 
     {
-      ban = 0;
       Serial.println("Han pasado 5 segundos y NO fue autorizado, se retorna al estado IDLE");
       nuevo_evento = EV_TIMEOUT;
       pasar_a_idle();
@@ -164,6 +160,7 @@ void pasar_a_esperando_respuesta()
 {
   Serial.println("Esperando autorización para poder entrar...");
   estado_actual = ST_ESPERANDO_RESPUESTA;   
+  tiempoDesde = millis();
 }
 
 void setup()
@@ -415,20 +412,24 @@ void play(int *melody, int *durations, int size)
 
 void playTuneSecondCore(TaskFunction_t pvTaskCode, const char *constpcName)
 {
-  xTaskCreatePinnedToCore(
-                    pvTaskCode,  // Función de la tarea
-                    constpcName, // Nombre de la tarea. 
-                    1000,        // Tamaño del Stack de la tarea 
-                    NULL,        // Parametros de la tarea
-                    1,           // Prioridad de la tarea
-                    &Task1,      // Handle de la tarea, para seguirla al ser creada
-                    CORE_ZERO);
+  if(!Task1 || eTaskGetState(Task1) == eDeleted)
+  {
+    xTaskCreatePinnedToCore(
+      pvTaskCode,     // Función de la tarea
+      constpcName,    // Nombre de la tarea. 
+      TASK_STACK_SIZE,// Tamaño del Stack de la tarea 
+      NULL,           // Parametros de la tarea
+      TASK_PRIORITY,  // Prioridad de la tarea
+      &Task1,         // Handle de la tarea, para seguirla al ser creada
+      CORE_ZERO
+    );
+  }
 }
 
 void TaskPlayAccessAllow(void * pvParameters)
 {
   int melody[] = {NOTE_E4, NOTE_F4, NOTE_G4};
-  int durations[] = {8, 8, 8};
+  int durations[] = {D_MEDIA_NOTA, D_MEDIA_NOTA, D_MEDIA_NOTA};
   play(melody, durations, sizeof(durations) / sizeof(int));
   vTaskDelete(NULL);
 }
@@ -436,7 +437,7 @@ void TaskPlayAccessAllow(void * pvParameters)
 void TaskPlayAccessDenied(void * pvParameters)
 {
   int melody[] = {NOTE_G5, NOTE_G5, NOTE_G5};
-  int durations[] = {8, 8, 8};
+  int durations[] = {D_MEDIA_NOTA, D_MEDIA_NOTA, D_MEDIA_NOTA};
   play(melody, durations, sizeof(durations) / sizeof(int));
   vTaskDelete(NULL);
 }
@@ -444,7 +445,7 @@ void TaskPlayAccessDenied(void * pvParameters)
 void TaskPlayBoot(void * pvParameters)
 {
   int melody[] = {NOTE_G5, NOTE_F5, NOTE_G5};
-  int durations[] = {4, 8, 4};
+  int durations[] = {D_NOTA, D_MEDIA_NOTA, D_NOTA};
   play(melody, durations, sizeof(durations) / sizeof(int));
   vTaskDelete(NULL);
 }
