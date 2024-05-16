@@ -45,6 +45,12 @@ TaskHandle_t Task1;
 #define D_NOTA 4
 #define D_MEDIA_NOTA 8
 
+#define COLOR__ENCENDIDO 255
+#define COLOR_APAGADO 0
+#define MITAD_VELOCIDAD_DEL_SONIDO  0.01723
+#define SEGUNDO_A_MILISEGUNDOS  1000
+#define SEGUNDO_A_MICROSEGUNDOS  1000000L
+
 // MFRC522 rfid(SS_PIN,RST_PIN);
 // MFRC522::MIFARE_KEY key;
 
@@ -126,8 +132,8 @@ void pasar_a_idle()
   Serial.println("Pasar a Idle");
   // digitalWrite(PIN_PULSADOR, LOW);
   moverServo(ANGULO_NO_PULSADO);
-  analogWrite(LED_ROJO, 255);
-  analogWrite(LED_VERDE, 0);
+  analogWrite(LED_ROJO, COLOR__ENCENDIDO);
+  analogWrite(LED_VERDE, COLOR_APAGADO);
   // digitalWrite(BUZZER, LOW);
   estado_actual = ST_IDLE;
 }
@@ -137,8 +143,8 @@ void pasar_a_barrera_abierta()
   tiempoDesde = millis();
     Serial.println("SE PASA A BARRERA ABIERTA");
     moverServo(ANGULO_PULSADO);
-    analogWrite(LED_ROJO, 0);
-    analogWrite(LED_VERDE, 255);
+    analogWrite(LED_ROJO, COLOR_APAGADO);
+    analogWrite(LED_VERDE, COLOR__ENCENDIDO);
 
     estado_actual = ST_BARRERA_ABIERTA;
 
@@ -188,7 +194,7 @@ void start()
 
   pinMode(PIN_BUZZER, OUTPUT);
 
-  analogWrite(LED_ROJO, 255);
+  analogWrite(LED_ROJO, COLOR__ENCENDIDO);
 
   lct = millis(); // Guarda el tiempo actual al inicio
   sensores[SENSOR_PULSADOR_ARRIBA].valor_actual_digital = LOW;
@@ -286,7 +292,7 @@ float leerSensorDistancia()
   digitalWrite(TRIG_PIN, LOW);
     
   //Leo el pin de Echo, y lo multiplico para retornar la distancia
-  return pulseIn(ECHO_PIN, HIGH) * 0.01723;
+  return pulseIn(ECHO_PIN, HIGH) * MITAD_VELOCIDAD_DEL_SONIDO;
 }
 
 bool verificarSensorProximidad()
@@ -390,7 +396,7 @@ bool stimeout(unsigned long intervalo) {
 void customTone(byte pin, uint16_t frequency, uint16_t duration)
 {
   unsigned long startTime=millis();
-  unsigned long halfPeriod= 1000000L/frequency/2;
+  unsigned long halfPeriod= SEGUNDO_A_MICROSEGUNDOS/frequency/2;
   pinMode(pin,OUTPUT);
   while (millis()-startTime< duration)
   {
@@ -407,7 +413,7 @@ void play(int *melody, int *durations, int size)
   for (int note = 0; note < size; note++)
   {
     // Para calcular la duración de la nota, se divide un segundo por la duración de la nota
-    int duration = 1000 / durations[note];
+    int duration = SEGUNDO_A_MILISEGUNDOS / durations[note];
     customTone(PIN_BUZZER, melody[note], duration);
   }
 }
