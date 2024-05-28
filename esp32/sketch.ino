@@ -1,7 +1,17 @@
 #include <ESP32Servo.h>
 #include <HardwareSerial.h>
 #include <SPI.h>
-// #include <MFRC522.h>
+#include <MFRC522.h>
+
+//--------------------INICIO RFID--------------------
+#define SS_PIN 21
+#define RST_PIN 14
+MFRC522 rfid(SS_PIN, RST_PIN); // Instance of the class
+MFRC522::MIFARE_Key key; 
+// Init array that will store new NUID 
+byte nuidPICC[4];
+//--------------------FIN RFID--------------------
+
 
 #define TONE_USE_INT
 #define TONE_PITCH 440
@@ -111,6 +121,9 @@ void pasar_a_idle();
 void pasar_a_barrera_abierta();
 void pasar_a_esperando_respuesta();
 
+int array_rfid_autorizado[4] = {227, 24, 159, 252};
+int arrayCodigoTarjeta[4] = {0, 0, 0, 0};
+
 
 typedef void (*transition)();
 transition state_table[MAX_ESTADOS][MAX_EVENTOS] =
@@ -203,6 +216,18 @@ void start()
   Serial.print("LCT: ");
   Serial.println(lct);
   playTuneSecondCore(TaskPlayBoot, "boot");
+
+  //RFID:
+  SPI.begin(); // Init SPI bus
+  rfid.PCD_Init(); // Init MFRC522 
+
+  for (byte i = 0; i < 6; i++) {
+    key.keyByte[i] = 0xFF;
+  }
+
+  // Serial.println(F("This code scan the MIFARE Classsic NUID."));
+  // Serial.print(F("Using the following key:"));
+  // printHex(key.keyByte, MFRC522::MF_KEY_SIZE);
 }
 
 void fsm()
@@ -231,7 +256,7 @@ void fsm()
 void tomar_evento()
 {
   if(verificarPulsadorArriba()
-    || verificarSensorProximidad() || verificarEntradaTeclado())
+    || verificarSensorProximidad() || verificarEntradaRFID() || verificarEntradaAutorizacion() )
   {
     return;
   }
@@ -310,37 +335,67 @@ bool verificarSensorProximidad()
   return false;
 }
 
-bool verificarRIFD()
-{
-  if (Serial.available() > 0) {
-    // Lee la cadena completa del monitor serial
-    char input = Serial.read();
-    
-    // Imprime la cadena leída en el monitor serial
-    Serial.print("Caracter recibido: ");
-    Serial.println(input);
+bool verificarEntradaAutorizacion(){
 
-    if (input == CARACTER_LEER_RFID) {
-      nuevo_evento = EV_LEER_RIFD;
-      Serial.println("Se está verificando su RFID...");
-      return true;
-    } else {
-      Serial.println("ERROR. RFID leido incorrectamente");
+  //Si está en 0 no debe entrar a evaluar autorización
+  if(arrayCodigoTarjeta[0] == 0 && arrayCodigoTarjeta[1] == 0 &&
+    arrayCodigoTarjeta[2] == 0 && arrayCodigoTarjeta[3] == 0 ) {
       return false;
-    }
   }
-  return false;
+
+  if (arrayCodigoTarjeta[0] != array_rfid_autorizado[0] || 
+    arrayCodigoTarjeta[1] != array_rfid_autorizado[1] || 
+    arrayCodigoTarjeta[2] != array_rfid_autorizado[2] || 
+    arrayCodigoTarjeta[3] != array_rfid_autorizado[3] ) {
+      nuevo_evento = EV_AUTORIZADO;
+      arrayCodigoTarjeta[0] = 0;
+      arrayCodigoTarjeta[1] = 0;
+      arrayCodigoTarjeta[2] = 0;
+      arrayCodigoTarjeta[3] = 0;
+      return true;
+  } 
+
+  arrayCodigoTarjeta[0] = 0;
+  arrayCodigoTarjeta[1] = 0;
+  arrayCodigoTarjeta[2] = 0;
+  arrayCodigoTarjeta[3] = 0;
+  nuevo_evento = EV_NO_AUTORIZADO;
+  return true;
 }
 
-bool verificarEntradaTeclado()
+bool verificarEntradaRFID()
 {
-  if (Serial.available() > 0) {
-    // Lee la cadena completa del monitor serial
-    char input = Serial.read();
-    
-    // Imprime la cadena leída en el monitor serial
-    Serial.print("Caracter recibido: ");
-    Serial.println(input);
+  
+  if ( ! rfid.PICC_IsNewCardPresent())
+    return false;
+
+  // Verify if the NUID has been readed
+  if ( ! rfid.PICC_ReadCardSerial())
+    return false;
+
+  //Serial.print(F("PICC type: "));
+  MFRC522::PICC_Type piccType = rfid.PICC_GetType(rfid.uid.sak);
+  //Serial.println(rfid.PICC_GetTypeName(piccType));
+
+  // Check is the PICC of Classic MIFARE type
+  if (piccType != MFRC522::PICC_TYPE_MIFARE_MINI &&  
+    piccType != MFRC522::PICC_TYPE_MIFARE_1K &&
+    piccType != MFRC522::PICC_TYPE_MIFARE_4K) {
+    Serial.println(F("Tu tarjeta no es del tipo MIFARE Classic."));
+    return false;
+  }
+
+  for (byte i = 0; i < rfid.uid.size; i++) {
+    arrayCodigoTarjeta[i] = rfid.uid.uidByte[i];
+  }
+
+  nuevo_evento = EV_LEER_RIFD;
+  return true;
+
+  if (arrayCodigoTarjeta[0] != array_rfid_autorizado[0] || 
+    arrayCodigoTarjeta[1] != array_rfid_autorizado[1] || 
+    arrayCodigoTarjeta[2] != array_rfid_autorizado[2] || 
+    arrayCodigoTarjeta[3] != array_rfid_autorizado[3] ) {
 
     if (input == CARACTER_LEER_RFID) {
       nuevo_evento = EV_LEER_RIFD;
@@ -365,7 +420,6 @@ bool verificarEntradaTeclado()
   }
   return false;
 }
-
 
 bool stimeout(unsigned long intervalo) {
   /****************************/ 
