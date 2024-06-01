@@ -2,6 +2,7 @@
 #include <HardwareSerial.h>
 #include <SPI.h>
 #include <MFRC522.h>
+#include "BluetoothSerial.h"
 
 //--------------------INICIO RFID--------------------
 #define SS_PIN 21
@@ -37,7 +38,7 @@ TaskHandle_t Task1;
 #define PIN_BUZZER 4
 #define SS_PIN 21   // Pin SS (Slave Select) del lector RFID
 #define RST_PIN 16 // Pin de reinicio del lector RFID
-#define UMBRAL_DIFERENCIA_TIMEOUT 5000 //5 segundos
+#define UMBRAL_DIFERENCIA_TIMEOUT 15000 //15 segundos
 #define UMBRAL_DISTANCIA_CM 50
 #define CARACTER_LEER_RFID 'R'
 #define CARACTER_AUTORIZADO_A_TIEMPO 'A'
@@ -113,6 +114,7 @@ void moverServo(int);
 bool verificarPulsador();
 bool verificarRIFD();
 bool verificarSensorProximidad();
+bool verificarBluetooth();
 void log(String mensaje);
 bool stimeout();
 void none();
@@ -122,6 +124,8 @@ void pasar_a_esperando_respuesta();
 
 int array_rfid_autorizado[4] = {227, 24, 159, 252};
 int arrayCodigoTarjeta[4] = {0, 0, 0, 0};
+
+BluetoothSerial SerialBT;
 
 
 typedef void (*transition)();
@@ -170,6 +174,7 @@ void pasar_a_barrera_abierta()
 void pasar_a_esperando_respuesta()
 {
   Serial.println("Esperando autorización para poder entrar...");
+  SerialBT.printf("%d %d %d %d \n", arrayCodigoTarjeta[0],arrayCodigoTarjeta[1],arrayCodigoTarjeta[2],arrayCodigoTarjeta[3]);
   estado_actual = ST_ESPERANDO_RESPUESTA;   
   tiempoDesde = millis();
 }
@@ -223,6 +228,8 @@ void start()
     key.keyByte[i] = 0xFF;
   }
 
+  SerialBT.begin("CGT_VIRTUAL");
+
   // Serial.println(F("This code scan the MIFARE Classsic NUID."));
   // Serial.print(F("Using the following key:"));
   // printHex(key.keyByte, MFRC522::MF_KEY_SIZE);
@@ -234,14 +241,16 @@ void fsm()
 
   if(nuevo_evento >= 0 && nuevo_evento < MAX_EVENTOS && estado_actual >= 0 && estado_actual < MAX_ESTADOS)
   {
-    if( nuevo_evento != EV_CONTINUAR )
+    int estado_ant = estado_actual;
+
+    state_table[estado_actual][nuevo_evento]();
+
+    if( nuevo_evento != EV_CONTINUAR && estado_ant != estado_actual)
     {
       //DebugPrintEstado(states_s[estado_actual], events_s[nuevo_evento]);
       Serial.println("ESTADO ACTUAL: " + estados_string[estado_actual]);
       Serial.println("EVENTO: " + eventos_string[nuevo_evento]);
     }
-
-    state_table[estado_actual][nuevo_evento]();
   } else 
   {
     /*HACER: Loguear errores*/
@@ -254,7 +263,8 @@ void fsm()
 void tomar_evento()
 {
   if(verificarPulsadorArriba()
-    || verificarSensorProximidad() || verificarEntradaRFID() || verificarEntradaAutorizacion() )
+    || verificarSensorProximidad() || verificarEntradaRFID() //|| verificarEntradaAutorizacion()
+    || verificarBluetooth())
   {
     return;
   }
@@ -477,4 +487,28 @@ void TaskPlayBoot(void * pvParameters)
   int durations[] = {D_NOTA, D_MEDIA_NOTA, D_NOTA};
   play(melody, durations, sizeof(durations) / sizeof(int));
   vTaskDelete(NULL);
+}
+
+bool verificarBluetooth(){
+  if(SerialBT.available()){
+    switch(SerialBT.read()){
+      case 'A':
+        nuevo_evento = EV_AUTORIZADO;
+        break;
+      case 'N':
+        nuevo_evento = EV_NO_AUTORIZADO;
+        playTuneSecondCore(TaskPlayAccessDenied, "Denegado");
+        break;
+      case 'T':
+        nuevo_evento = EV_AUTORIZADO;
+        playTuneSecondCore(TaskPlayAccessAllow, "Tarde");
+        break;
+      case 'P':
+        nuevo_evento = EV_PULSADOR;
+        break;
+      default:
+        return false;
+    }
+    return true;
+  }
 }
