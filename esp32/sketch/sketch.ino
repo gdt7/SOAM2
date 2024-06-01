@@ -1,4 +1,4 @@
-#include <ESP32Servo.h>
+#include <Servo.h>
 #include <HardwareSerial.h>
 #include <SPI.h>
 #include <MFRC522.h>
@@ -19,9 +19,8 @@ byte nuidPICC[4];
 
 TaskHandle_t Task1;
 
-#define PIN_PULSADOR_ARRIBA 4
-#define PIN_PULSADOR_ABAJO 12
-#define PIN_SERVO 18
+#define PIN_PULSADOR_ARRIBA 34
+#define PIN_SERVO 33
 
 #define MAX_CANT_SENSORES 4
 #define SENSOR_PULSADOR_ARRIBA 0
@@ -31,12 +30,12 @@ TaskHandle_t Task1;
 #define MAX_ESTADOS 3
 #define MAX_EVENTOS 8
 
-#define TRIG_PIN 19 // Ultrasonic Sensor's TRIG pin - Pulso para comenzar con medición
+#define TRIG_PIN 15 // Ultrasonic Sensor's TRIG pin - Pulso para comenzar con medición
 #define ECHO_PIN 5  // Ultrasonic Sensor's ECHO pin - Mide el largo del pulso para obtener la distancia
-#define LED_ROJO 2
-#define LED_VERDE 15
-#define PIN_BUZZER 21
-#define SS_PIN 5   // Pin SS (Slave Select) del lector RFID
+#define LED_ROJO 3
+#define LED_VERDE 2
+#define PIN_BUZZER 4
+#define SS_PIN 21   // Pin SS (Slave Select) del lector RFID
 #define RST_PIN 16 // Pin de reinicio del lector RFID
 #define UMBRAL_DIFERENCIA_TIMEOUT 5000 //5 segundos
 #define UMBRAL_DISTANCIA_CM 50
@@ -129,7 +128,7 @@ typedef void (*transition)();
 transition state_table[MAX_ESTADOS][MAX_EVENTOS] =
     {
         {none, pasar_a_barrera_abierta, none, pasar_a_esperando_respuesta, none, none, none},//state ST_IDLE
-        {none, none, pasar_a_idle, pasar_a_esperando_respuesta, pasar_a_idle, pasar_a_barrera_abierta, none},//state ST_ESPERANDO_RESPUESTA
+        {none, none, pasar_a_idle, none, pasar_a_idle, pasar_a_barrera_abierta, none},//state ST_ESPERANDO_RESPUESTA
         {none, pasar_a_idle, pasar_a_idle, none, none, none, pasar_a_idle} //state ST_BARRERA_ABIERTA
 };
 // EVENTOS {"EV_CONTINUAR", "EV_PULSADOR", "EV_TIMEOUT", "EV_LEER_RFID", "EV_NO_AUTORIZADO", "EV_AUTORIZADO", "EV_DISTANCIA"};
@@ -195,7 +194,6 @@ void start()
   // rfid_PCD.init();      // Inicializa el lector RFID
   // Asigno los pines a los sensores correspondientes
   pinMode(PIN_PULSADOR_ARRIBA, INPUT);
-  pinMode(PIN_PULSADOR_ABAJO, INPUT);
 
   // Se configura el pin TRIG como salida para el sensor ultrasónico.
   pinMode(TRIG_PIN, OUTPUT);
@@ -304,11 +302,7 @@ bool verificarPulsadorArriba()
 }
 
 float leerSensorDistancia()
-{
-  //Desactivo el trigger
-  digitalWrite(TRIG_PIN, LOW);
-  delayMicroseconds(2);
-  
+{ 
   //Activo el Trigger por 10 microsegundos
   digitalWrite(TRIG_PIN, HIGH);
   delayMicroseconds(10);
@@ -360,6 +354,7 @@ bool verificarEntradaAutorizacion(){
   arrayCodigoTarjeta[2] = 0;
   arrayCodigoTarjeta[3] = 0;
   nuevo_evento = EV_NO_AUTORIZADO;
+  playTuneSecondCore(TaskPlayAccessDenied, "Denegado");
   return true;
 }
 
@@ -391,34 +386,6 @@ bool verificarEntradaRFID()
 
   nuevo_evento = EV_LEER_RIFD;
   return true;
-
-  if (arrayCodigoTarjeta[0] != array_rfid_autorizado[0] || 
-    arrayCodigoTarjeta[1] != array_rfid_autorizado[1] || 
-    arrayCodigoTarjeta[2] != array_rfid_autorizado[2] || 
-    arrayCodigoTarjeta[3] != array_rfid_autorizado[3] ) {
-
-    if (input == CARACTER_LEER_RFID) {
-      nuevo_evento = EV_LEER_RIFD;
-      Serial.println("Se está verificando su RFID...");
-      return true;
-    } else if (input == CARACTER_AUTORIZADO_A_TIEMPO) {
-      Serial.println("Llegó en horario... AUTORIZADO");
-      nuevo_evento = EV_AUTORIZADO;
-      return true;
-    } else if (input == CARACTER_AUTORIZADO_TARDE ) {
-      Serial.println("NO llegó en horario... AUTORIZADO");
-      nuevo_evento = EV_AUTORIZADO;
-      playTuneSecondCore(TaskPlayAccessAllow, "Late");
-      return true;
-    } else if (input == CARACTER_NO_AUTORIZADO) {
-      Serial.println("NO AUTORIZADO");
-      nuevo_evento = EV_NO_AUTORIZADO;
-      playTuneSecondCore(TaskPlayAccessDenied, "Denied");      
-      return true;
-    }
-    return false;
-  }
-  return false;
 }
 
 bool stimeout(unsigned long intervalo) {
