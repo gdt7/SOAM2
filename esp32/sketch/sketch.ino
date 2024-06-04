@@ -92,7 +92,7 @@ enum estados
   ST_ESPERANDO_RESPUESTA,
   ST_BARRERA_ABIERTA
 } estado_actual;
-String estados_string[] = {"ST_IDLE", "ST_ESPERANDO_RESPUESTA", "ST_BARRERA_ABIERTA"};
+String estados_string[] = {"ST_IDLE", "ST_ESPERANDO_RESPUESTA", "ST_BARRERA_ABIERTA", "ST_BARRERA_ABIERTA_MANUAL"};
 
 // Definición de los eventos
 enum eventos
@@ -124,6 +124,7 @@ void pasar_a_esperando_respuesta();
 
 int array_rfid_autorizado[4] = {227, 24, 159, 252};
 int arrayCodigoTarjeta[4] = {0, 0, 0, 0};
+bool check_timeout = false;
 
 BluetoothSerial SerialBT;
 
@@ -131,9 +132,10 @@ BluetoothSerial SerialBT;
 typedef void (*transition)();
 transition state_table[MAX_ESTADOS][MAX_EVENTOS] =
     {
-        {none, pasar_a_barrera_abierta, none, pasar_a_esperando_respuesta, none, none, none},//state ST_IDLE
+        {none, pasar_a_barrera_abierta_m, none, pasar_a_esperando_respuesta, none, none, none},//state ST_IDLE
         {none, none, pasar_a_idle, none, pasar_a_idle, pasar_a_barrera_abierta, none},//state ST_ESPERANDO_RESPUESTA
         {none, pasar_a_idle, pasar_a_idle, none, none, none, pasar_a_idle} //state ST_BARRERA_ABIERTA
+        {none, pasar_a_idle, pasar_a_idle, none, none, none, none } //state ST_BARRERA_ABIERTA_MANUAL
 };
 // EVENTOS {"EV_CONTINUAR", "EV_PULSADOR", "EV_TIMEOUT", "EV_LEER_RFID", "EV_NO_AUTORIZADO", "EV_AUTORIZADO", "EV_DISTANCIA"};
 /**********************************************************************************************/
@@ -152,22 +154,46 @@ void pasar_a_idle()
   analogWrite(LED_VERDE, COLOR_APAGADO);
   // digitalWrite(BUZZER, LOW);
   estado_actual = ST_IDLE;
+  check_timeout = false;
+}
+
+void start_tiempo_desde()
+{
+  check_timeout = true;
+  tiempoDesde = millis();
+}
+
+void levantar_barrera()
+{
+  start_tiempo_desde();
+  Serial.println("SE PASA A BARRERA ABIERTA");
+  moverServo(ANGULO_PULSADO);
+  analogWrite(LED_ROJO, COLOR_APAGADO);
+  analogWrite(LED_VERDE, COLOR__ENCENDIDO);
 }
 
 void pasar_a_barrera_abierta()
 {
-  tiempoDesde = millis();
-    Serial.println("SE PASA A BARRERA ABIERTA");
-    moverServo(ANGULO_PULSADO);
-    analogWrite(LED_ROJO, COLOR_APAGADO);
-    analogWrite(LED_VERDE, COLOR__ENCENDIDO);
+  levantar_barrera();
 
-    estado_actual = ST_BARRERA_ABIERTA;
+  estado_actual = ST_BARRERA_ABIERTA;
 
-    if(nuevo_evento == EV_PULSADOR){
-      nuevo_evento = EV_CONTINUAR;
-      return;
-    }
+  if(nuevo_evento == EV_PULSADOR){
+    nuevo_evento = EV_CONTINUAR;
+    return;
+  }
+}
+
+void pasar_a_barrera_abierta_m()
+{
+  levantar_barrera();
+
+  estado_actual = ST_BARRERA_ABIERTA_MANUAL;
+
+  if(nuevo_evento == EV_PULSADOR){
+    nuevo_evento = EV_CONTINUAR;
+    return;
+  }
 }
 
 
@@ -176,7 +202,7 @@ void pasar_a_esperando_respuesta()
   Serial.println("Esperando autorización para poder entrar...");
   SerialBT.printf("%d %d %d %d \n", arrayCodigoTarjeta[0],arrayCodigoTarjeta[1],arrayCodigoTarjeta[2],arrayCodigoTarjeta[3]);
   estado_actual = ST_ESPERANDO_RESPUESTA;   
-  tiempoDesde = millis();
+  start_tiempo_desde();
 }
 
 void setup()
@@ -269,10 +295,10 @@ void tomar_evento()
     return;
   }
 
-  if((estado_actual == ST_BARRERA_ABIERTA || estado_actual == ST_ESPERANDO_RESPUESTA) ){
+  if(check_timeout)
+  {
     if (stimeout(UMBRAL_DIFERENCIA_TIMEOUT)) 
     {
-      Serial.println("Han pasado 5 segundos y NO fue autorizado, se retorna al estado IDLE");
       nuevo_evento = EV_TIMEOUT;
       return;
     }
