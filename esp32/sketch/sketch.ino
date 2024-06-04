@@ -28,7 +28,7 @@ TaskHandle_t Task1;
 #define SENSOR_PULSADOR_ABAJO 1
 #define SENSOR_PROXIMIDAD 2
 #define SENSOR_RFID 3
-#define MAX_ESTADOS 3
+#define MAX_ESTADOS 4
 #define MAX_EVENTOS 8
 
 #define TRIG_PIN 15 // Ultrasonic Sensor's TRIG pin - Pulso para comenzar con medición
@@ -90,7 +90,8 @@ enum estados
 {
   ST_IDLE,
   ST_ESPERANDO_RESPUESTA,
-  ST_BARRERA_ABIERTA
+  ST_BARRERA_ABIERTA,
+  ST_BARRERA_ABIERTA_MANUAL
 } estado_actual;
 String estados_string[] = {"ST_IDLE", "ST_ESPERANDO_RESPUESTA", "ST_BARRERA_ABIERTA", "ST_BARRERA_ABIERTA_MANUAL"};
 
@@ -120,6 +121,7 @@ bool stimeout();
 void none();
 void pasar_a_idle();
 void pasar_a_barrera_abierta();
+void pasar_a_barrera_abierta_m();
 void pasar_a_esperando_respuesta();
 
 int array_rfid_autorizado[4] = {227, 24, 159, 252};
@@ -131,11 +133,11 @@ BluetoothSerial SerialBT;
 
 typedef void (*transition)();
 transition state_table[MAX_ESTADOS][MAX_EVENTOS] =
-    {
-        {none, pasar_a_barrera_abierta_m, none, pasar_a_esperando_respuesta, none, none, none},//state ST_IDLE
-        {none, none, pasar_a_idle, none, pasar_a_idle, pasar_a_barrera_abierta, none},//state ST_ESPERANDO_RESPUESTA
-        {none, pasar_a_idle, pasar_a_idle, none, none, none, pasar_a_idle} //state ST_BARRERA_ABIERTA
-        {none, pasar_a_idle, pasar_a_idle, none, none, none, none } //state ST_BARRERA_ABIERTA_MANUAL
+{
+    {none, pasar_a_barrera_abierta_m, none, pasar_a_esperando_respuesta, none, none, none},//state ST_IDLE
+    {none, none, pasar_a_idle, none, pasar_a_idle, pasar_a_barrera_abierta, none},//state ST_ESPERANDO_RESPUESTA
+    {none, pasar_a_idle, pasar_a_idle, none, none, none, pasar_a_idle}, //state ST_BARRERA_ABIERTA
+    {none, pasar_a_idle, pasar_a_idle, none, none, none, none } //state ST_BARRERA_ABIERTA_MANUAL
 };
 // EVENTOS {"EV_CONTINUAR", "EV_PULSADOR", "EV_TIMEOUT", "EV_LEER_RFID", "EV_NO_AUTORIZADO", "EV_AUTORIZADO", "EV_DISTANCIA"};
 /**********************************************************************************************/
