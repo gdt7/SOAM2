@@ -1,5 +1,7 @@
 package com.example.soa;
 
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothManager;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
@@ -14,7 +16,7 @@ import androidx.core.view.WindowInsetsCompat;
 public class MainActivity extends AppCompatActivity {
 
     private Button btnListadoChoferes;
-
+    BluetoothAdapter btAdapter;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -26,6 +28,7 @@ public class MainActivity extends AppCompatActivity {
             return insets;
         });
 
+         btAdapter = BluetoothManager.getAdapter();
         btnListadoChoferes = (Button) findViewById(R.id.btnListadoChoferes);
         btnListadoChoferes.setOnClickListener(irAlistadoChoferes);
     }

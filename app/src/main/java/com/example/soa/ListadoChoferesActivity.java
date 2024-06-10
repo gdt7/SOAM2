@@ -5,11 +5,19 @@ import android.app.Activity;
 import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.graphics.Color;
+import android.graphics.drawable.Icon;
 import android.os.Bundle;
 import android.provider.BaseColumns;
+import android.view.Display;
+import android.view.Gravity;
+import android.view.View;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.TableLayout;
 import android.widget.TableRow;
+import android.widget.TextView;
+
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
@@ -42,11 +50,12 @@ public class ListadoChoferesActivity extends AppCompatActivity {
 
 // Create a new map of values, where column names are the keys
         ContentValues values = new ContentValues();
-        values.put(FeedReaderDbHelper.FeedEntry.COLUMN_NAME_TITLE, "My Title");
-        values.put(FeedReaderContract.FeedEntry.COLUMN_NAME_SUBTITLE, "subtitle");
+        values.put(FeedReaderContract.FeedEntry.COLUMN_NAME_FULL_NAME, "Jose Perez");
+        values.put(FeedReaderContract.FeedEntry.COLUMN_NAME_TAG_ID, "100 234 99 122");
+        values.put(FeedReaderContract.FeedEntry.COLUMN_NAME_ENTRY_HOUR, "10");
 
 // Insert the new row, returning the primary key value of the new row
-        long newRowId = db.insert(FeedReaderDbHelper.FeedEntry.TABLE_NAME, null, values);
+       // long newRowId = db.insert(FeedReaderContract.FeedEntry.TABLE_NAME, null, values);
 
          db = dbHelper.getReadableDatabase();
 
@@ -54,20 +63,21 @@ public class ListadoChoferesActivity extends AppCompatActivity {
 // you will actually use after this query.
         String[] projection = {
                 BaseColumns._ID,
-                FeedReaderDbHelper.FeedEntry.COLUMN_NAME_TITLE,
-                FeedReaderDbHelper.FeedEntry.COLUMN_NAME_SUBTITLE
+                FeedReaderContract.FeedEntry.COLUMN_NAME_FULL_NAME,
+                FeedReaderContract.FeedEntry.COLUMN_NAME_TAG_ID,
+                FeedReaderContract.FeedEntry.COLUMN_NAME_ENTRY_HOUR
         };
 
 // Filter results WHERE "title" = 'My Title'
-        String selection = FeedReaderDbHelper.FeedEntry.COLUMN_NAME_TITLE + " = ?";
-        String[] selectionArgs = { "My Title" };
+        String selection = FeedReaderContract.FeedEntry.COLUMN_NAME_TAG_ID + " = ?";
+        String[] selectionArgs = { "100 234 99 122" };
 
 // How you want the results sorted in the resulting Cursor
         String sortOrder =
-                FeedReaderDbHelper.FeedEntry.COLUMN_NAME_SUBTITLE + " DESC";
+                FeedReaderContract.FeedEntry.COLUMN_NAME_TAG_ID + " DESC";
 
         Cursor cursor = db.query(
-                FeedReaderDbHelper.FeedEntry.TABLE_NAME,   // The table to query
+                FeedReaderContract.FeedEntry.TABLE_NAME,   // The table to query
                 projection,             // The array of columns to return (pass null to get all)
                 selection,              // The columns for the WHERE clause
                 selectionArgs,          // The values for the WHERE clause
@@ -79,24 +89,40 @@ public class ListadoChoferesActivity extends AppCompatActivity {
         List<Long> itemIds = new ArrayList<>();
         while(cursor.moveToNext()) {
             long itemId = cursor.getLong(
-                    cursor.getColumnIndexOrThrow(FeedReaderDbHelper.FeedEntry._ID));
-            itemIds.add(itemId);
+                    cursor.getColumnIndexOrThrow(FeedReaderContract.FeedEntry._ID));
+            String driverName = cursor.getString(
+                    cursor.getColumnIndexOrThrow(FeedReaderContract.FeedEntry.COLUMN_NAME_FULL_NAME));
+            String tagId = cursor.getString(
+                    cursor.getColumnIndexOrThrow(FeedReaderContract.FeedEntry.COLUMN_NAME_TAG_ID));
+            TableRow tr = new TableRow(this);
+            tr.setGravity(Gravity.CENTER);
+            tr.setLayoutParams(new TableRow.LayoutParams(TableRow.LayoutParams.MATCH_PARENT, TableRow.LayoutParams.MATCH_PARENT));
+            TextView txtName = new TextView(this);
+            txtName.setText(driverName);
+            //txtName.setGravity(View.TEXT_ALIGNMENT_CENTER);
+            //txtName.setLayoutParams(new TableRow.LayoutParams(TableRow.LayoutParams.MATCH_PARENT, TableRow.LayoutParams.MATCH_PARENT));
+            TextView txtTagId = new TextView(this);
+            txtTagId.setText(tagId);
+            //txtTagId.setLayoutParams(new TableRow.LayoutParams(TableRow.LayoutParams.MATCH_PARENT, TableRow.LayoutParams.MATCH_PARENT));
+            tr.addView(txtName);
+            tr.addView(txtTagId);
+            ImageButton b = new ImageButton(this);
+            b.setImageResource(R.drawable.baseline_visibility_24);
+            ImageButton b1 = new ImageButton(this);
+            b1.setImageResource(R.drawable.sharp_calendar_clock_24);
+            ImageButton b2 = new ImageButton(this);
+            b2.setImageResource(R.drawable.baseline_delete_24);
+          //  b.setLayoutParams(new TableRow.LayoutParams(TableRow.LayoutParams.MATCH_PARENT, TableRow.LayoutParams.MATCH_PARENT));
+           // b1.setLayoutParams(new TableRow.LayoutParams(TableRow.LayoutParams.MATCH_PARENT, TableRow.LayoutParams.MATCH_PARENT));
+            //b2.setLayoutParams(new TableRow.LayoutParams(TableRow.LayoutParams.MATCH_PARENT, TableRow.LayoutParams.MATCH_PARENT));
+            tr.addView(b);
+            tr.addView(b1);
+            tr.addView(b2);
+            /* Add row to TableLayout. */
+            tableChoferes.addView(tr, new TableLayout.LayoutParams(TableLayout.LayoutParams.MATCH_PARENT, TableLayout.LayoutParams.MATCH_PARENT));
         }
         cursor.close();
 
-        /* Create a Button to be the row-content. */
-        for (long id : itemIds) {
-            TableRow tr = new TableRow(this);
-            tr.setLayoutParams(new TableRow.LayoutParams(TableRow.LayoutParams.WRAP_CONTENT, TableRow.LayoutParams.WRAP_CONTENT));
-            Button b = new Button(this);
-            b.setText("Dynamic Button");
-
-            b.setLayoutParams(new TableRow.LayoutParams(TableRow.LayoutParams.FILL_PARENT, TableRow.LayoutParams.WRAP_CONTENT));
-            /* Add Button to row. */
-            tr.addView(b);
-            /* Add row to TableLayout. */
-            tableChoferes.addView(tr, new TableLayout.LayoutParams(TableLayout.LayoutParams.FILL_PARENT, TableLayout.LayoutParams.WRAP_CONTENT));
-        }
     //tr.setBackgroundResource(R.drawable.sf_gradient_03);
 
     }
