@@ -1,11 +1,18 @@
 package com.example.android_app;
 
 
+import android.content.ComponentName;
 import android.content.ContentValues;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.IBinder;
+import android.os.Message;
 import android.provider.BaseColumns;
+import android.util.Log;
 import android.view.Gravity;
 import android.widget.ImageButton;
 import android.widget.TableLayout;
@@ -25,8 +32,12 @@ public class ListadoChoferesActivity extends AppCompatActivity {
 
     private TableLayout tableChoferes;
 
+    BluethootService btService;
+    boolean btBounded = false;
+    private static final String TAG = "ListadoChoferes";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Log.d(TAG,"oncreate");
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_listado_choferes);
@@ -36,58 +47,23 @@ public class ListadoChoferesActivity extends AppCompatActivity {
             return insets;
         });
 
+        Intent mIntent = new Intent(this, BluethootService.class);
+        bindService(mIntent, mConnection, BIND_AUTO_CREATE);
+
+       // btService.setHandler(mHandler);
+
         tableChoferes = (TableLayout) findViewById(R.id.tableChoferes);
 
-        FeedReaderDbHelper dbHelper = new FeedReaderDbHelper(this);
+        ChoferDbHelper dbHelp = new ChoferDbHelper(this);
+        // dbHelp.insertChofer("JOSE SOSA","122 322 112 442","15");
 
-        SQLiteDatabase db = dbHelper.getWritableDatabase();
 
-// Create a new map of values, where column names are the keys
-        ContentValues values = new ContentValues();
-        values.put(FeedReaderContract.FeedEntry.COLUMN_NAME_FULL_NAME, "Jose Perez");
-        values.put(FeedReaderContract.FeedEntry.COLUMN_NAME_TAG_ID, "100 234 99 122");
-        values.put(FeedReaderContract.FeedEntry.COLUMN_NAME_ENTRY_HOUR, "10");
+        List<Chofer> choferes = new ArrayList<>();
+        choferes.addAll(dbHelp.findChoferById("122 322 112 442"));
 
-// Insert the new row, returning the primary key value of the new row
-       // long newRowId = db.insert(FeedReaderContract.FeedEntry.TABLE_NAME, null, values);
-
-         db = dbHelper.getReadableDatabase();
-
-// Define a projection that specifies which columns from the database
-// you will actually use after this query.
-        String[] projection = {
-                BaseColumns._ID,
-                FeedReaderContract.FeedEntry.COLUMN_NAME_FULL_NAME,
-                FeedReaderContract.FeedEntry.COLUMN_NAME_TAG_ID,
-                FeedReaderContract.FeedEntry.COLUMN_NAME_ENTRY_HOUR
-        };
-
-// Filter results WHERE "title" = 'My Title'
-        String selection = FeedReaderContract.FeedEntry.COLUMN_NAME_TAG_ID + " = ?";
-        String[] selectionArgs = { "100 234 99 122" };
-
-// How you want the results sorted in the resulting Cursor
-        String sortOrder =
-                FeedReaderContract.FeedEntry.COLUMN_NAME_TAG_ID + " DESC";
-
-        Cursor cursor = db.query(
-                FeedReaderContract.FeedEntry.TABLE_NAME,   // The table to query
-                projection,             // The array of columns to return (pass null to get all)
-                selection,              // The columns for the WHERE clause
-                selectionArgs,          // The values for the WHERE clause
-                null,                   // don't group the rows
-                null,                   // don't filter by row groups
-                sortOrder               // The sort order
-        );
-
-        List<Long> itemIds = new ArrayList<>();
-        while(cursor.moveToNext()) {
-            long itemId = cursor.getLong(
-                    cursor.getColumnIndexOrThrow(FeedReaderContract.FeedEntry._ID));
-            String driverName = cursor.getString(
-                    cursor.getColumnIndexOrThrow(FeedReaderContract.FeedEntry.COLUMN_NAME_FULL_NAME));
-            String tagId = cursor.getString(
-                    cursor.getColumnIndexOrThrow(FeedReaderContract.FeedEntry.COLUMN_NAME_TAG_ID));
+        for (Chofer c : choferes) {
+            String driverName = c.getFullName();
+            String tagId = c.getTagId();
             TableRow tr = new TableRow(this);
             tr.setGravity(Gravity.CENTER);
             tr.setLayoutParams(new TableRow.LayoutParams(TableRow.LayoutParams.MATCH_PARENT, TableRow.LayoutParams.MATCH_PARENT));
@@ -106,8 +82,8 @@ public class ListadoChoferesActivity extends AppCompatActivity {
             b1.setImageResource(R.drawable.sharp_calendar_clock_24);
             ImageButton b2 = new ImageButton(this);
             b2.setImageResource(R.drawable.baseline_delete_24);
-          //  b.setLayoutParams(new TableRow.LayoutParams(TableRow.LayoutParams.MATCH_PARENT, TableRow.LayoutParams.MATCH_PARENT));
-           // b1.setLayoutParams(new TableRow.LayoutParams(TableRow.LayoutParams.MATCH_PARENT, TableRow.LayoutParams.MATCH_PARENT));
+            //  b.setLayoutParams(new TableRow.LayoutParams(TableRow.LayoutParams.MATCH_PARENT, TableRow.LayoutParams.MATCH_PARENT));
+            // b1.setLayoutParams(new TableRow.LayoutParams(TableRow.LayoutParams.MATCH_PARENT, TableRow.LayoutParams.MATCH_PARENT));
             //b2.setLayoutParams(new TableRow.LayoutParams(TableRow.LayoutParams.MATCH_PARENT, TableRow.LayoutParams.MATCH_PARENT));
             tr.addView(b);
             tr.addView(b1);
@@ -115,9 +91,60 @@ public class ListadoChoferesActivity extends AppCompatActivity {
             /* Add row to TableLayout. */
             tableChoferes.addView(tr, new TableLayout.LayoutParams(TableLayout.LayoutParams.MATCH_PARENT, TableLayout.LayoutParams.MATCH_PARENT));
         }
-        cursor.close();
-
-    //tr.setBackgroundResource(R.drawable.sf_gradient_03);
-
     }
+
+    ServiceConnection mConnection = new ServiceConnection() {
+
+        public void onServiceDisconnected(ComponentName name) {
+            btBounded = false;
+            btService = null;
+        }
+
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            // Toast.makeText(context, "Service is connected", 1000).show();
+            Log.d(TAG,"entro service connected");
+            BluethootService.LocalBinder mLocalBinder = (BluethootService.LocalBinder) service;
+            btService = mLocalBinder.getInstance();
+            btBounded = true;
+            btService.setHandler(mHandler);
+        }
+    };
+
+
+    private final Handler mHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            //FragmentActivity activity = getActivity();
+            switch (msg.what) {
+                case BluethootService.Constants.MESSAGE_STATE_CHANGE:
+                    switch (msg.arg1) {
+                        case BluethootService.STATE_CONNECTED:
+
+                            break;
+                        case BluethootService.STATE_CONNECTING:
+
+                            break;
+                        case BluethootService.STATE_LISTEN:
+                        case BluethootService.STATE_NONE:
+
+                            break;
+                    }
+                    break;
+                case BluethootService.Constants.MESSAGE_WRITE:
+                    byte[] writeBuf = (byte[]) msg.obj;
+                    // construct a string from the buffer
+                    String writeMessage = new String(writeBuf);
+                    //mConversationArrayAdapter.add("Me:  " + writeMessage);
+                    break;
+                case BluethootService.Constants.MESSAGE_READ:
+                    byte[] readBuf = (byte[]) msg.obj;
+                    // construct a string from the valid bytes in the buffer
+                    String readMessage = new String(readBuf, 0, msg.arg1);
+                    //mConversationArrayAdapter.add(mConnectedDeviceName + ":  " + readMessage);
+                    //LEO MENSAJE E INSTANCIO EL POPUP PARA QUE EL USUARIO DECIDA QUE QUIERE HACER
+                    DialogBuilder.buildAuthorizationDialog(getBaseContext());
+                    break;
+            }
+        }
+    };
 }
