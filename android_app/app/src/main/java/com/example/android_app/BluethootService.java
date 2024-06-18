@@ -1,5 +1,7 @@
 package com.example.android_app;
 
+import static com.example.android_app.BluethootService.Constants.MAC_ESP32;
+
 import android.annotation.SuppressLint;
 import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
@@ -79,6 +81,7 @@ public class BluethootService extends Service {
         String DEVICE_NAME = "device_name";
         String TOAST = "toast";
 
+        String MAC_ESP32 = "";
     }
 
     /**
@@ -135,7 +138,7 @@ public class BluethootService extends Service {
              String deviceName = device.getName();
             String macAddress = device.getAddress();
             if (macAddress != null && macAddress.length() > 0) {
-                connectToDevice(macAddress);
+                connectToDevice(MAC_ESP32);
             } else {
                 stopSelf();
                 return START_STICKY_COMPATIBILITY;
