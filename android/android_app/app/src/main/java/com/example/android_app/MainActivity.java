@@ -1,26 +1,15 @@
 package com.example.android_app;
 
-import android.app.ProgressDialog;
-import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothManager;
-import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
-import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
-import android.Manifest;
-import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
-
-import com.example.android_app.DB.DbHelper;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -40,14 +29,14 @@ public class MainActivity extends AppCompatActivity {
         Button btnListadoChoferes = findViewById(R.id.btnListadoChoferes);
         btnListadoChoferes.setOnClickListener(irAlistadoChoferes);
 
-        Button btnInteractuar = findViewById(R.id.btn_int);
+        Button btnInteractuar = findViewById(R.id.btnInteractuarEmbebido);
         btnInteractuar.setOnClickListener(irAInteractuar);
 
         Button btnCrearChofer = findViewById(R.id.btnAgregarChofer);
         btnCrearChofer.setOnClickListener(irACrearChofer);
 
-        Button btnConfigurarBluetooth = findViewById(R.id.btnBluetooth);
-        btnConfigurarBluetooth.setOnClickListener(irAConfigurarBluetooth);
+        //Button btnConfigurarBluetooth = findViewById(R.id.btnBluetooth);
+        //btnConfigurarBluetooth.setOnClickListener(irAConfigurarBluetooth);
 
 
         //BASE DE DATOS - Se debe hacer cuando ejecutas por primera vez la aplicaciòn y no creaste la DB
@@ -83,7 +72,9 @@ public class MainActivity extends AppCompatActivity {
     private final View.OnClickListener irAInteractuar = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-            Intent i = new Intent(MainActivity.this, InteractuarEmbebidoActivity.class);
+            String direccionBluethoot = "6C:94:66:CB:44:67";
+            Intent i = new Intent(MainActivity.this, ComunicarConEmbebido.class);
+            i.putExtra("Direccion_Bluethoot", direccionBluethoot);
             startActivity(i);
         }
     };

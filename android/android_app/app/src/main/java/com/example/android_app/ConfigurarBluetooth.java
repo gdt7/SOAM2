@@ -1,6 +1,5 @@
 package com.example.android_app;
 
-import android.Manifest;
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -366,7 +365,7 @@ public class ConfigurarBluetooth extends AppCompatActivity {
             //String direccionBluethoot = dispositivo.getAddress();
 
             String direccionBluethoot = "EC:94:CB:6A:FB:0E";
-            Intent i = new Intent(ConfigurarBluetooth.this, activity_comunicacion.class);
+            Intent i = new Intent(ConfigurarBluetooth.this, ComunicarConEmbebido.class);
             i.putExtra("Direccion_Bluethoot", direccionBluethoot);
             startActivity(i);
         }

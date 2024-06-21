@@ -141,7 +141,7 @@ public class DeviceListActivity extends Activity
                     //se inicia el Activity de comunicacion con el bluethoot, para transferir los datos.
                     //Para eso se le envia como parametro la direccion(MAC) del bluethoot Arduino
                     String direccionBluethoot = dispositivo.getAddress();
-                    Intent i = new Intent(DeviceListActivity.this, activity_comunicacion.class);
+                    Intent i = new Intent(DeviceListActivity.this, ComunicarConEmbebido.class);
                     i.putExtra("Direccion_Bluethoot", direccionBluethoot);
 
                     startActivity(i);
