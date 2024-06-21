@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">android_app</string>
+    <string name="col1">Nombre</string>
+    <string name="col2">Apellido</string>
+    <string name="col3">Turno</string>
+    <string name="row1Name">Santiago</string>
+    <string name="row1Surname">Galo</string>
+    <string name="row1Age">Noche</string>
+    <string name="title_activity_nuevo_chofer">NuevoChofer</string>
+</resources>
