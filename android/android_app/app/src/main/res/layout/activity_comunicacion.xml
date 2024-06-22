@@ -52,6 +52,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Llegó a tiempo"
+        android:visibility="invisible"
         android:textSize="16sp"
         android:textStyle="bold"
         android:background="#4CAF50"
@@ -82,8 +83,8 @@
                 android:layout_height="120dp"
                 android:layout_marginEnd="16dp"
                 android:padding="2dp"
-                app:srcCompat="@drawable/baseline_person"
-                tools:srcCompat="@drawable/baseline_person" />
+                app:srcCompat="@drawable/ic_contacto"
+                tools:srcCompat="@drawable/ic_contacto" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -112,7 +113,7 @@
                         android:id="@+id/txtNombreChoferInfo"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text=""
+                        android:text="No detectado"
                         android:textSize="16sp"
                         android:textColor="@android:color/black"
                         android:layout_marginBottom="8dp"/>
@@ -138,7 +139,7 @@
                         android:id="@+id/txtApellidoInfo"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text=""
+                        android:text="No detectado"
                         android:textSize="16sp"
                         android:textColor="@android:color/black"
                         android:layout_marginBottom="8dp"/>
@@ -164,7 +165,7 @@
                         android:id="@+id/txtTurnoInfo"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text=""
+                        android:text="No detectado"
                         android:textSize="16sp"
                         android:textColor="@android:color/black"
                         android:layout_marginBottom="8dp"/>
@@ -190,7 +191,7 @@
                         android:id="@+id/txtRFIDInfo"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text=""
+                        android:text="No detectado"
                         android:textSize="16sp"
                         android:textColor="@android:color/black"
                         android:layout_marginBottom="8dp"/>

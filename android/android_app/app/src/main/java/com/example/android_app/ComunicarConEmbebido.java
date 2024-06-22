@@ -84,6 +84,12 @@ public class ComunicarConEmbebido extends Activity
 
     }
 
+    @Override
+    protected void onStart() {
+        super.onStart();
+        txtEstadoLlegada.setVisibility(View.INVISIBLE);
+    }
+
     @SuppressLint("MissingPermission")
     @Override
     //Cada vez que se detecta el evento OnResume se establece la comunicacion con el HC05, creando un
@@ -195,15 +201,17 @@ public class ComunicarConEmbebido extends Activity
                                     txtNombre.setText(chofer.getNombre());
                                     txtApellido.setText(chofer.getApellido());
                                     txtTurno.setText(chofer.getTurno());
+                                    txtEstadoLlegada.setVisibility(View.VISIBLE);
                                     txtEstadoLlegada.setText("AUTORIZADO - TARDE");
-                                    txtEstadoLlegada.setBackgroundColor(Color.BLUE);
+                                    txtEstadoLlegada.setBackgroundColor(R.color.colorBlue);
                                     mConnectedThread.write("T");
                                 } else {
                                     txtNombre.setText(chofer.getNombre());
                                     txtApellido.setText(chofer.getApellido());
                                     txtTurno.setText(chofer.getTurno());
+                                    txtEstadoLlegada.setVisibility(View.VISIBLE);
                                     txtEstadoLlegada.setText("AUTORIZADO - A TIEMPO");
-                                    txtEstadoLlegada.setBackgroundColor(Color.GREEN);
+                                    txtEstadoLlegada.setBackgroundColor(R.color.colorSuccess);
                                     mConnectedThread.write("A");
                                 }
                             }
@@ -220,7 +228,8 @@ public class ComunicarConEmbebido extends Activity
         @Override
         public void onClick(View v) {
             mConnectedThread.write("P");    // Send "1" via Bluetooth
-            showToast("Encender el LED");        }
+            //showToast("Encender el LED");
+        }
     };
 
     //Listener del boton encender que envia  msj para Apagar Led a Arduino atraves del Bluethoot
