@@ -22,7 +22,7 @@
             android:layout_height="match_parent">
 
             <TextView
-                android:id="@+id/txtHorarioLlegada"
+                android:id="@+id/toolbar_text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerInParent="true"
@@ -48,7 +48,7 @@
         tools:ignore="HardcodedText" />
 
     <TextView
-        android:id="@+id/llego_tiempo"
+        android:id="@+id/txtHorarioLlegada"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Llegó a tiempo"
