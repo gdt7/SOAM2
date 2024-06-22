@@ -7,6 +7,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -23,7 +24,12 @@ import android.widget.PopupWindow;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -34,6 +40,9 @@ public class MainActivity extends AppCompatActivity {
 
     private Button btnListadoChoferes;
     private Button btnInteractuar;
+
+    private static final int REQUEST_ENABLE_BT = 1;
+
     private BluetoothAdapter btAdapter;
 
     private BluethootService mService = null;
@@ -61,21 +70,41 @@ public class MainActivity extends AppCompatActivity {
         btnInteractuar.setOnClickListener(irAInteractuar);
 
         // Obtener el BluetoothManager y el BluetoothAdapter
-        BluetoothManager bluetoothManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
-        if (bluetoothManager != null) {
-            btAdapter = bluetoothManager.getAdapter();
-        }
+
 
         //Start del servicio de BT y bindeo
-        startService(new Intent(this.getBaseContext(), BluethootService.class));
-        //doBindService();
 
+        //mService.start();
+        if (ContextCompat.checkSelfPermission(
+                this,android.Manifest.permission.BLUETOOTH_SCAN) ==
+                PackageManager.PERMISSION_GRANTED) {
+            // You can use the API that requires the permission.
+            mService = new BluethootService(getApplicationContext(), mHandler);
+        } else {
+            // You can directly ask for the permission.
+            // The registered ActivityResultCallback gets the result of this request.
+            requestPermissionLauncher.launch(
+                    android.Manifest.permission.BLUETOOTH_SCAN);
+        }
+
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_ENABLE_BT) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                mService = new BluethootService(getApplicationContext(), mHandler);
+            } else {
+                Toast.makeText(this, "Permiso de ubicación denegado", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 
     @Override
     protected void onStart() {
         super.onStart();
-        mService = new BluethootService(getApplicationContext(), mHandler);
+
     }
 
     private ServiceConnection mConnection = new ServiceConnection() {
@@ -175,4 +204,22 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     };
+
+
+    // Register the permissions callback, which handles the user's response to the
+// system permissions dialog. Save the return value, an instance of
+// ActivityResultLauncher, as an instance variable.
+    private ActivityResultLauncher<String> requestPermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
+                if (isGranted) {
+                    // Permission is granted. Continue the action or workflow in your
+                    // app.
+                } else {
+                    // Explain to the user that the feature is unavailable because the
+                    // feature requires a permission that the user has denied. At the
+                    // same time, respect the user's decision. Don't link to system
+                    // settings in an effort to convince the user to change their
+                    // decision.
+                }
+            });
 }

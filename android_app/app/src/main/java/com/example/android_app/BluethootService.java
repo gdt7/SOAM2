@@ -24,6 +24,7 @@ import android.widget.ArrayAdapter;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -70,6 +71,8 @@ public class BluethootService extends Service {
     private String emmbeddedMac = "";
     private final IBinder mIBinder = new LocalBinder();
 
+    private Context ctx;
+
     public interface Constants {
 
         // Message types sent from the BluetoothChatService Handler
@@ -81,7 +84,7 @@ public class BluethootService extends Service {
         String DEVICE_NAME = "device_name";
         String TOAST = "toast";
 
-        String MAC_ESP32 = "";
+        String MAC_ESP32 = "24:DC:C3:A7:4F:96";
     }
 
     /**
@@ -90,36 +93,39 @@ public class BluethootService extends Service {
      * @param context The UI Activity Context
      * @param handler A Handler to send messages back to the UI Activity
      */
-    public BluethootService(Context context,Handler handler){
-        mHandler = handler;
-    }
-
-    @Override
-    public void onCreate() {
-        super.onCreate();
-        // Inicializar el adaptador Bluetooth
+    public BluethootService(Context context, Handler handler) {
         btAdapter = BluetoothAdapter.getDefaultAdapter();
-
-        // Inicializar el ArrayAdapter para la lista de dispositivos
-       // devicesArrayAdapter = new ArrayAdapter<>(ctx, android.R.layout.simple_list_item_1);
-
-        IntentFilter filter = new IntentFilter();
-
-        filter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED); //Cambia el estado del Bluethoot (Acrtivado /Desactivado)
-        filter.addAction(BluetoothDevice.ACTION_FOUND); //Se encuentra un dispositivo bluethoot al realizar una busqueda
-        filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_STARTED); //Cuando se comienza una busqueda de bluethoot
-        filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED); //cuando la busqueda de bluethoot finaliza
-
-        //se define (registra) el handler que captura los broadcast anterirmente mencionados.
-        registerReceiver(receiver, filter);
-
-
-        //defino el Handler de comunicacion entre el hilo Principal  el secundario.
-        //El hilo secundario va a mostrar informacion al layout atraves utilizando indeirectamente a este handler
-        bluetoothIn = Handler_Msg_Hilo_Principal();
-
-        super.onCreate();
+        mHandler = handler;
+        ctx = context;
+        connectToDevice("");
     }
+
+//    @Override
+//    public void onCreate() {
+//        super.onCreate();
+//        // Inicializar el adaptador Bluetooth
+//        btAdapter = BluetoothAdapter.getDefaultAdapter();
+//
+//        // Inicializar el ArrayAdapter para la lista de dispositivos
+//        // devicesArrayAdapter = new ArrayAdapter<>(ctx, android.R.layout.simple_list_item_1);
+//
+//        IntentFilter filter = new IntentFilter();
+//
+//        filter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED); //Cambia el estado del Bluethoot (Acrtivado /Desactivado)
+//        filter.addAction(BluetoothDevice.ACTION_FOUND); //Se encuentra un dispositivo bluethoot al realizar una busqueda
+//        filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_STARTED); //Cuando se comienza una busqueda de bluethoot
+//        filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED); //cuando la busqueda de bluethoot finaliza
+//
+//        //se define (registra) el handler que captura los broadcast anterirmente mencionados.
+//        registerReceiver(receiver, filter);
+//
+//
+//        //defino el Handler de comunicacion entre el hilo Principal  el secundario.
+//        //El hilo secundario va a mostrar informacion al layout atraves utilizando indeirectamente a este handler
+//        bluetoothIn = Handler_Msg_Hilo_Principal();
+//
+//        super.onCreate();
+//    }
 
 
     @Nullable
@@ -130,33 +136,45 @@ public class BluethootService extends Service {
 
 
     @SuppressLint("MissingPermission")
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        btAdapter = BluetoothAdapter.getDefaultAdapter();
-        if (btAdapter != null) {
-            device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-             String deviceName = device.getName();
-            String macAddress = device.getAddress();
-            if (macAddress != null && macAddress.length() > 0) {
-                connectToDevice(MAC_ESP32);
-            } else {
-                stopSelf();
-                return START_STICKY_COMPATIBILITY;
-            }
-        }
-        String stopservice = intent.getStringExtra("stopservice");
-        if (stopservice != null && stopservice.length() > 0) {
-            stop();
-        }
-        return START_STICKY;
-    }
+//    @Override
+//    public int onStartCommand(Intent intent, int flags, int startId) {
+//        //btAdapter = BluetoothAdapter.getDefaultAdapter();
+//
+//        IntentFilter filter = new IntentFilter();
+//
+//        filter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED); //Cambia el estado del Bluethoot (Acrtivado /Desactivado)
+//        filter.addAction(BluetoothDevice.ACTION_FOUND); //Se encuentra un dispositivo bluethoot al realizar una busqueda
+//        filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_STARTED); //Cuando se comienza una busqueda de bluethoot
+//        filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED); //cuando la busqueda de bluethoot finaliza
+//
+//        //se define (registra) el handler que captura los broadcast anterirmente mencionados.
+//        registerReceiver(receiver, filter);
+//
+//
+//        if (btAdapter != null) {
+//            //device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+//             //String deviceName = device.getName();
+//            //String macAddress = device.getAddress();
+//            //if (macAddress != null && macAddress.length() > 0) {
+//                connectToDevice(MAC_ESP32);
+//            //} else {
+//             //   stopSelf();
+//              //  return START_STICKY_COMPATIBILITY;
+//         //   }
+//        }
+//        String stopservice = intent.getStringExtra("stopservice");
+//        if (stopservice != null && stopservice.length() > 0) {
+//            stop();
+//        }
+//        return START_STICKY;
+//    }
 
     private void connectionFailed() {
         BluethootService.this.stop();
         //Message msg = mHandler.obtainMessage(AbstractActivity.MESSAGE_TOAST);
         Message msg = mHandler.obtainMessage(1);
         Bundle bundle = new Bundle();
-        bundle.putString("1","1");
+        bundle.putString("1", "1");
         bundle.putString(Constants.TOAST, "Unable to connect device");
         msg.setData(bundle);
         mHandler.sendMessage(msg);
@@ -176,8 +194,7 @@ public class BluethootService extends Service {
 
 
     private synchronized void connectToDevice(String macAddress) {
-
-        BluetoothDevice device = btAdapter.getRemoteDevice(macAddress);
+        BluetoothDevice device = btAdapter.getRemoteDevice(MAC_ESP32);
         if (mState == STATE_CONNECTING) {
             if (mConnectThread != null) {
                 mConnectThread.cancel();
@@ -221,10 +238,11 @@ public class BluethootService extends Service {
         setState(STATE_CONNECTED);
 
     }
+
     private void setState(int state) {
         BluethootService.mState = state;
         if (mHandler != null) {
-           // mHandler.obtainMessage(AbstractActivity.MESSAGE_STATE_CHANGE, state, -1).sendToTarget();
+            // mHandler.obtainMessage(AbstractActivity.MESSAGE_STATE_CHANGE, state, -1).sendToTarget();
         }
     }
 
@@ -327,44 +345,51 @@ public class BluethootService extends Service {
     //*************************************** recibe los datos enviados por el HC05**********************************
 
 
-
     private class ConnectThread extends Thread {
         private final BluetoothSocket mmSocket;
         private final BluetoothDevice mmDevice;
 
-        @SuppressLint("MissingPermission")
+
         public ConnectThread(BluetoothDevice device) {
             this.mmDevice = device;
             BluetoothSocket tmp = null;
             try {
-                tmp = device.createRfcommSocketToServiceRecord(UUID.fromString(SPP_UUID));
+                if (ContextCompat.checkSelfPermission(ctx, android.Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
+                    tmp = device.createRfcommSocketToServiceRecord(UUID.fromString(SPP_UUID));
+                }
+
+
+
+
             } catch (IOException e) {
                 e.printStackTrace();
             }
             mmSocket = tmp;
         }
 
-        @SuppressLint("MissingPermission")
+
         @Override
         public void run() {
             setName("ConnectThread");
-            btAdapter.cancelDiscovery();
-            try {
-                mmSocket.connect();
-            } catch (IOException e) {
+            if (ActivityCompat.checkSelfPermission(ctx, android.Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+                btAdapter.cancelDiscovery();
                 try {
-                    mmSocket.close();
-                } catch (IOException e1) {
-                    e1.printStackTrace();
-                }
-                connectionFailed();
-                return;
+                    mmSocket.connect();
+                } catch (IOException e) {
+                    try {
+                        mmSocket.close();
+                    } catch (IOException e1) {
+                        e1.printStackTrace();
+                    }
+                    connectionFailed();
+                    return;
 
+                }
+                synchronized (BluethootService.this) {
+                    mConnectThread = null;
+                }
+                connected(mmSocket, mmDevice);
             }
-            synchronized (BluethootService.this) {
-                mConnectThread = null;
-            }
-            connected(mmSocket, mmDevice);
         }
 
         public void cancel() {
@@ -486,4 +511,6 @@ public class BluethootService extends Service {
         r.write(out);
     }
 
+
 }
+
