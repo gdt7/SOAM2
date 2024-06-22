@@ -127,6 +127,7 @@ void pasar_a_esperando_respuesta();
 int array_rfid_autorizado[4] = {227, 24, 159, 252};
 int arrayCodigoTarjeta[4] = {0, 0, 0, 0};
 bool check_timeout = false;
+bool usar_sensor_distancia = false;
 
 BluetoothSerial SerialBT;
 
@@ -157,6 +158,7 @@ void pasar_a_idle()
   // digitalWrite(BUZZER, LOW);
   estado_actual = ST_IDLE;
   check_timeout = false;
+  usar_sensor_distancia = false;
 }
 
 void start_tiempo_desde()
@@ -177,6 +179,7 @@ void levantar_barrera()
 void pasar_a_barrera_abierta()
 {
   levantar_barrera();
+  usar_sensor_distancia = true;
 
   estado_actual = ST_BARRERA_ABIERTA;
 
@@ -189,6 +192,7 @@ void pasar_a_barrera_abierta()
 void pasar_a_barrera_abierta_m()
 {
   levantar_barrera();
+  usar_sensor_distancia = false;
 
   estado_actual = ST_BARRERA_ABIERTA_MANUAL;
 
@@ -205,6 +209,7 @@ void pasar_a_esperando_respuesta()
   SerialBT.printf("%d %d %d %d \n", arrayCodigoTarjeta[0],arrayCodigoTarjeta[1],arrayCodigoTarjeta[2],arrayCodigoTarjeta[3]);
   estado_actual = ST_ESPERANDO_RESPUESTA;   
   start_tiempo_desde();
+  usar_sensor_distancia = false;
 }
 
 void setup()
@@ -257,6 +262,7 @@ void start()
   }
 
   SerialBT.begin("CGT_VIRTUAL");
+  Serial.println(SerialBT.getBtAddressString());
 
   // Serial.println(F("This code scan the MIFARE Classsic NUID."));
   // Serial.print(F("Using the following key:"));
@@ -354,6 +360,9 @@ float leerSensorDistancia()
 
 bool verificarSensorProximidad()
 {
+  if(!usar_sensor_distancia){
+    return false;
+  }
   sensores[SENSOR_PROXIMIDAD].valor_actual_analogico = leerSensorDistancia();
 
   float valor_actual = sensores[SENSOR_PROXIMIDAD].valor_actual_analogico;
