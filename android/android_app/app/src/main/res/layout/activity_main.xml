@@ -69,5 +69,12 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
             android:text="Interactuar con Embebido" />
+
+        <Button
+            android:id="@+id/btnConfigurarPermisos"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="Configurar Permisos" />
     </LinearLayout>
 </LinearLayout>

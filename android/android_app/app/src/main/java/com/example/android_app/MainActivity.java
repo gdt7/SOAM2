@@ -35,8 +35,8 @@ public class MainActivity extends AppCompatActivity {
         Button btnCrearChofer = findViewById(R.id.btnAgregarChofer);
         btnCrearChofer.setOnClickListener(irACrearChofer);
 
-        //Button btnConfigurarBluetooth = findViewById(R.id.btnBluetooth);
-        //btnConfigurarBluetooth.setOnClickListener(irAConfigurarBluetooth);
+        Button btnConfigurarPermisosBluetooth = findViewById(R.id.btnConfigurarPermisos);
+        btnConfigurarPermisosBluetooth.setOnClickListener(irAConfigurarBluetooth);
 
 
         //BASE DE DATOS - Se debe hacer cuando ejecutas por primera vez la aplicaciòn y no creaste la DB
