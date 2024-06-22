@@ -191,6 +191,7 @@ public class ComunicarConEmbebido extends Activity
                             txtApellido.setText("NO REGISTRADO");
                             txtTurno.setText("NO REGISTRADO");
                             txtEstadoLlegada.setText("NO AUTORIZADO");
+                            txtEstadoLlegada.setVisibility(View.VISIBLE);
                             txtEstadoLlegada.setBackgroundColor(Color.RED);
                             mConnectedThread.write("N");
                         } else {
