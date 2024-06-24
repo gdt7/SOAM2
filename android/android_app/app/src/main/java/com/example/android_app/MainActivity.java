@@ -12,10 +12,18 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements  SensorEventListener {
+
+    private static boolean isDarkTheme = false;
+    private SensorManager mSensorManager;
+    private Sensor mAccelerometer;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // Aplicar el tema predeterminado
+        setTheme(isDarkTheme ? R.style.Base_Theme_Android_app : com.google.android.material.R.style.Base_Theme_Material3_Dark);
+        
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
@@ -24,6 +32,12 @@ public class MainActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+
+         // Inicialización del SensorManager y acelerómetro
+        mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        if (mSensorManager != null) {
+            mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        }
 
 
         Button btnListadoChoferes = findViewById(R.id.btnListadoChoferes);
@@ -92,4 +106,73 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     };*/
+    @Override
+    protected void onPause() {
+        super.onPause();
+        Log.d(TAG, "onPause: Stopping sensors");
+        Parar_Sensores();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        Log.d(TAG, "onResume: Starting sensors");
+        Ini_Sensores();
+    }
+
+    // Método para inicializar los sensores
+    protected void Ini_Sensores() {
+        if (mSensorManager != null && mAccelerometer != null) {
+            mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+            Log.d(TAG, "Ini_Sensores: Sensor listener registered");
+        } else {
+            Log.e(TAG, "Ini_Sensores: SensorManager or Accelerometer not initialized");
+        }
+    }
+
+    // Método para parar la escucha de los sensores
+    private void Parar_Sensores() {
+        if (mSensorManager != null && mAccelerometer != null) {
+            mSensorManager.unregisterListener(this, mAccelerometer);
+            Log.d(TAG, "Parar_Sensores: Sensor listener unregistered");
+        } else {
+            Log.e(TAG, "Parar_Sensores: SensorManager or Accelerometer not initialized");
+        }
+    }
+
+
+    //Este método se llama cada vez que hay un cambio en los datos de un sensor que está registrado con un SensorEventListener
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        synchronized (this) {
+            Log.d(TAG, "onSensorChanged: " + event.sensor.getName());
+
+            if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+                float x = event.values[0];
+                float y = event.values[1];
+                float z = event.values[2];
+
+                double acceleration = Math.sqrt(x * x + y * y + z * z) - SensorManager.GRAVITY_EARTH;
+                //Log.d(TAG, "Acceleration: " + acceleration);
+
+                if (acceleration > 8) {
+                    Log.d(TAG, "onSensorChanged: Significant movement detected");
+                    //playsound();
+                    // Cambiar el tema
+                    toggleTheme();
+                }
+            }
+        }
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+        // Método necesario para implementar SensorEventListener
+    }
+
+    private void toggleTheme() {
+       //Log.d(TAG, "CAMBIAR TEMA!!"); // Registra un mensaje de depuración indicando que se va a cambiar el tema
+        isDarkTheme = !isDarkTheme;
+        recreate();
+    }
 }
