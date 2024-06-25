@@ -30,7 +30,7 @@ public class MainActivity extends AppCompatActivity implements  SensorEventListe
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         // Aplicar el tema predeterminado
-        setTheme(isDarkTheme ? R.style.Base_Theme_Android_app : com.google.android.material.R.style.Base_Theme_Material3_Dark);
+        setTheme(isDarkTheme ? com.google.android.material.R.style.Base_Theme_Material3_Light : com.google.android.material.R.style.Base_Theme_Material3_Dark);
         
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
