@@ -1,7 +1,15 @@
 package com.example.android_app;
 
+import static android.content.ContentValues.TAG;
+
+import android.content.Context;
 import android.content.Intent;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 
@@ -133,7 +141,7 @@ public class MainActivity extends AppCompatActivity implements  SensorEventListe
     // Método para parar la escucha de los sensores
     private void Parar_Sensores() {
         if (mSensorManager != null && mAccelerometer != null) {
-            mSensorManager.unregisterListener(this, mAccelerometer);
+            mSensorManager.unregisterListener((SensorEventListener) this, mAccelerometer);
             Log.d(TAG, "Parar_Sensores: Sensor listener unregistered");
         } else {
             Log.e(TAG, "Parar_Sensores: SensorManager or Accelerometer not initialized");
