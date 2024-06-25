@@ -21,7 +21,7 @@ import androidx.core.view.WindowInsetsCompat;
 
 
 public class MainActivity extends AppCompatActivity implements  SensorEventListener {
-
+    private int param = 8;
     private static boolean isDarkTheme = false;
     private SensorManager mSensorManager;
     private Sensor mAccelerometer;
@@ -161,7 +161,7 @@ public class MainActivity extends AppCompatActivity implements  SensorEventListe
                 double acceleration = Math.sqrt(x * x + y * y + z * z) - SensorManager.GRAVITY_EARTH;
                 //Log.d(TAG, "Acceleration: " + acceleration);
 
-                if (acceleration > 8) {
+                if (acceleration > param) {
                     Log.d(TAG, "onSensorChanged: Significant movement detected");
                     //playsound();
                     // Cambiar el tema
