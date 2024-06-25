@@ -52,12 +52,7 @@ public class ConfigurarBluetooth extends AppCompatActivity {
             android.Manifest.permission.BLUETOOTH,
             android.Manifest.permission.BLUETOOTH_ADMIN,
             android.Manifest.permission.BLUETOOTH_CONNECT,
-            android.Manifest.permission.BLUETOOTH_SCAN,
-            android.Manifest.permission.ACCESS_COARSE_LOCATION,
-            android.Manifest.permission.READ_PHONE_STATE,
-            android.Manifest.permission.READ_MEDIA_IMAGES,
-            android.Manifest.permission.READ_MEDIA_VIDEO,
-            android.Manifest.permission.READ_MEDIA_AUDIO,
+            android.Manifest.permission.BLUETOOTH_SCAN
     };
 
     @Override
@@ -75,7 +70,7 @@ public class ConfigurarBluetooth extends AppCompatActivity {
         btnActivar = (Button) findViewById(R.id.btnActivar);
         btnEmparejar = (Button) findViewById(R.id.btnEmparejar);
         btnBuscar = (Button) findViewById(R.id.btnBuscar);
-        btnComunicacion = (Button) findViewById(R.id.btnComunicacion);
+
         loadingDialogBar = new LoadingDialogBar(this);
 
         //Se crea un adaptador para poder manejar el bluethoot del celular
@@ -98,7 +93,7 @@ public class ConfigurarBluetooth extends AppCompatActivity {
                 }
         );
 
-        btnComunicacion.setOnClickListener(irAComunicacion);
+
         if (checkPermissions())
         {
             enableComponent();

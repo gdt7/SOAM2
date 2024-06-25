@@ -1,11 +1,15 @@
 package com.example.android_app;
 
+import static androidx.activity.result.ActivityResultCallerKt.registerForActivityResult;
+
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
@@ -17,7 +21,15 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResult;
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import com.example.android_app.DB.DbChoferes;
 import com.example.android_app.entidades.Chofer;
@@ -26,6 +38,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /*********************************************************************************************************
@@ -33,11 +47,13 @@ import java.util.UUID;
  **********************************************************************************************************/
 
 //******************************************** Hilo principal del Activity**************************************
-public class ComunicarConEmbebido extends Activity
+public class ComunicarConEmbebido extends AppCompatActivity
 {
 
     Button btnBarrera;
     TextView txtNombre, txtApellido, txtTurno, txtRFID, txtEstadoLlegada;
+
+    private ActivityResultLauncher<Intent> bluetoothActivityResultLauncher;
 
     Handler bluetoothIn;
     final int handlerState = 0; //used to identify handler message
@@ -55,6 +71,15 @@ public class ComunicarConEmbebido extends Activity
 
     // String for MAC address del Hc05
     private static String address = null;
+
+    String[] permissions= new String[]{
+            android.Manifest.permission.BLUETOOTH,
+            android.Manifest.permission.BLUETOOTH_ADMIN,
+            android.Manifest.permission.BLUETOOTH_CONNECT,
+            android.Manifest.permission.BLUETOOTH_SCAN
+    };
+
+    public static final int MULTIPLE_PERMISSIONS = 10;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -82,6 +107,68 @@ public class ComunicarConEmbebido extends Activity
 
         dbChoferes = new DbChoferes(ComunicarConEmbebido.this);
 
+        if(checkPermissions()) {
+            // Inicializar y registrar el ActivityResultLauncher
+            bluetoothActivityResultLauncher = registerForActivityResult(
+                    new ActivityResultContracts.StartActivityForResult(),
+                    new ActivityResultCallback<ActivityResult>() {
+                        @Override
+                        public void onActivityResult(ActivityResult result) {
+                            if (result.getResultCode() == RESULT_OK) {
+                                // Bluetooth ha sido habilitado
+                                showAlert("ÉXITO", "Bluetooth ha sido habilitado");
+                            } else {
+                                // El usuario no habilitó Bluetooth o la solicitud fue cancelada
+                                showAlert("ERROR", "Bluetooth NO ha sido habilitado");
+                            }
+                        }
+                    }
+            );
+        }
+        else{
+           finish();
+        }
+
+    }
+
+    private  boolean checkPermissions() {
+        int result;
+        List<String> listPermissionsNeeded = new ArrayList<>();
+
+        //Se chequea si la version de Android es menor a la 6
+
+
+        for (String p:permissions) {
+            result = ContextCompat.checkSelfPermission(this,p);
+            if (result != PackageManager.PERMISSION_GRANTED) {
+                listPermissionsNeeded.add(p);
+            }
+        }
+        if (!listPermissionsNeeded.isEmpty()) {
+            ActivityCompat.requestPermissions(this, listPermissionsNeeded.toArray(new String[0]), MULTIPLE_PERMISSIONS);
+            return false;
+        }
+        return true;
+    }
+    private void showAlert(String title, String text) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+
+        // Configura el título y mensaje del AlertDialog
+        builder.setTitle(title);
+        builder.setMessage(text);
+
+        // Configura el botón positivo
+        builder.setPositiveButton("Cerrar", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                // Acción a realizar cuando el usuario hace clic en el botón OK
+                dialog.dismiss();
+            }
+        });
+
+        // Crea y muestra el AlertDialog
+        AlertDialog alertDialog = builder.create();
+        alertDialog.show();
     }
 
     @Override
@@ -96,50 +183,44 @@ public class ComunicarConEmbebido extends Activity
     //socketBluethoot
     public void onResume() {
         super.onResume();
+       if(checkPermissions()) {
+            //Obtengo el parametro, aplicando un Bundle, que me indica la Mac Adress del HC05
+            Intent intent = getIntent();
+            Bundle extras = intent.getExtras();
 
-        //Obtengo el parametro, aplicando un Bundle, que me indica la Mac Adress del HC05
-        Intent intent=getIntent();
-        Bundle extras=intent.getExtras();
+            address = extras.getString("Direccion_Bluethoot");
 
-        address= extras.getString("Direccion_Bluethoot");
+            BluetoothDevice device = btAdapter.getRemoteDevice(address);
 
-        BluetoothDevice device = btAdapter.getRemoteDevice(address);
-
-        //se realiza la conexion del Bluethoot crea y se conectandose a atraves de un socket
-        try
-        {
-            btSocket = createBluetoothSocket(device);
-        }
-        catch (IOException e)
-        {
-            showToast( "La creacción del Socket fallo");
-        }
-        // Establish the Bluetooth socket connection.
-        try
-        {
-            btSocket.connect();
-        }
-        catch (IOException e)
-        {
-            try
-            {
-                btSocket.close();
+            //se realiza la conexion del Bluethoot crea y se conectandose a atraves de un socket
+            try {
+                btSocket = createBluetoothSocket(device);
+            } catch (IOException e) {
+                showToast("La creacción del Socket fallo");
             }
-            catch (IOException e2)
-            {
-                //insert code to deal with this
+            // Establish the Bluetooth socket connection.
+            try {
+                btSocket.connect();
+            } catch (IOException e) {
+                try {
+                    btSocket.close();
+                } catch (IOException e2) {
+                    //insert code to deal with this
+                }
             }
-        }
 
-        //Una establecida la conexion con el Hc05 se crea el hilo secundario, el cual va a recibir
-        // los datos de Arduino atraves del bluethoot
-        mConnectedThread = new ConnectedThread(btSocket);
-        mConnectedThread.start();
+            //Una establecida la conexion con el Hc05 se crea el hilo secundario, el cual va a recibir
+            // los datos de Arduino atraves del bluethoot
+            mConnectedThread = new ConnectedThread(btSocket);
+            mConnectedThread.start();
 
-        //I send a character when resuming.beginning transmission to check device is connected
-        //If it is not an exception will be thrown in the write method and finish() will be called
-        mConnectedThread.write("x");
+            //I send a character when resuming.beginning transmission to check device is connected
+            //If it is not an exception will be thrown in the write method and finish() will be called
+            mConnectedThread.write("x");
+       }
+
     }
+
 
 
     @Override
@@ -150,7 +231,9 @@ public class ComunicarConEmbebido extends Activity
         try
         {
             //Don't leave Bluetooth sockets open when leaving activity
-            btSocket.close();
+            if(btSocket != null){
+                btSocket.close();
+            }
         } catch (IOException e2) {
             //insert code to deal with this
         }
@@ -299,6 +382,28 @@ public class ComunicarConEmbebido extends Activity
                 showToast("La conexion fallo");
                 finish();
 
+            }
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        switch (requestCode) {
+            case MULTIPLE_PERMISSIONS: {
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // permissions granted.
+                    //enableComponent(); // Now you call here what ever you want :)
+                } else {
+                    String perStr = "";
+                    for (String per : permissions) {
+                        perStr += "\n" + per;
+                    }
+                    // permissions list of don't granted permission
+                    Toast.makeText(this, "ATENCION: La aplicacion no funcionara " +
+                            "correctamente debido a la falta de Permisos", Toast.LENGTH_LONG).show();
+                }
+                return;
             }
         }
     }
