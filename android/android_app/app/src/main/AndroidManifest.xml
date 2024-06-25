@@ -33,12 +33,6 @@
             android:name=".ComunicarConEmbebido"
             android:exported="false" />
         <activity
-            android:name=".DeviceListActivity"
-            android:exported="false" />
-        <activity
-            android:name=".ConfigurarBluetooth"
-            android:exported="false" />
-        <activity
             android:name=".VerChoferActivity"
             android:exported="false" />
         <activity
@@ -58,7 +52,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".InteractuarEmbebidoActivity" />
     </application>
 
 </manifest>

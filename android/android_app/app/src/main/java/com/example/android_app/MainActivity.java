@@ -57,9 +57,6 @@ public class MainActivity extends AppCompatActivity implements  SensorEventListe
         Button btnCrearChofer = findViewById(R.id.btnAgregarChofer);
         btnCrearChofer.setOnClickListener(irACrearChofer);
 
-        Button btnConfigurarPermisosBluetooth = findViewById(R.id.btnConfigurarPermisos);
-        btnConfigurarPermisosBluetooth.setOnClickListener(irAConfigurarBluetooth);
-
 
         //BASE DE DATOS - Se debe hacer cuando ejecutas por primera vez la aplicaciòn y no creaste la DB
         //Button btnCrear = findViewById(R.id.btnCrear);
@@ -75,14 +72,6 @@ public class MainActivity extends AppCompatActivity implements  SensorEventListe
         }
     };
 
-    private final View.OnClickListener irAConfigurarBluetooth = new View.OnClickListener() {
-        @Override
-        public void onClick(View v) {
-            Intent i = new Intent(MainActivity.this, ConfigurarBluetooth.class);
-            startActivity(i);
-        }
-    };
-
     private final View.OnClickListener irACrearChofer = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
@@ -94,8 +83,8 @@ public class MainActivity extends AppCompatActivity implements  SensorEventListe
     private final View.OnClickListener irAInteractuar = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-            String direccionBluethoot = "EC:94:CB:6A:FB:0E";
-            //git String direccionBluethoot = "24:DC:C3:A7:4F:96";
+            //String direccionBluethoot = "EC:94:CB:6A:FB:0E";
+             String direccionBluethoot = "24:DC:C3:A7:4F:96";
             Intent i = new Intent(MainActivity.this, ComunicarConEmbebido.class);
             i.putExtra("Direccion_Bluethoot", direccionBluethoot);
             startActivity(i);
