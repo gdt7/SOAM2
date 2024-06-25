@@ -94,7 +94,7 @@ public class MainActivity extends AppCompatActivity implements  SensorEventListe
     private final View.OnClickListener irAInteractuar = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-            String direccionBluethoot = "6C:94:66:CB:44:67";
+            String direccionBluethoot = "EC:94:CB:6A:FB:0E";
             Intent i = new Intent(MainActivity.this, ComunicarConEmbebido.class);
             i.putExtra("Direccion_Bluethoot", direccionBluethoot);
             startActivity(i);
