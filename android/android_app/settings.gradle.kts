@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "android_app"
+rootProject.name = "SmartGate"
 include(":app")
  
