@@ -1,9 +1,8 @@
-package com.example.android_app;
+package com.smartgate;
 
 import static androidx.activity.result.ActivityResultCallerKt.registerForActivityResult;
 
 import android.annotation.SuppressLint;
-import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
@@ -31,8 +30,9 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import com.example.android_app.DB.DbChoferes;
-import com.example.android_app.entidades.Chofer;
+import com.example.android_app.R;
+import com.smartgate.DB.DbChoferes;
+import com.smartgate.entidades.Chofer;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -43,7 +43,7 @@ import java.util.List;
 import java.util.UUID;
 
 /*********************************************************************************************************
- * Activity que muestra realiza la comunicacion con Arduino
+ * Activity que realiza la comunicacion con esp32
  **********************************************************************************************************/
 
 //******************************************** Hilo principal del Activity**************************************
@@ -72,7 +72,13 @@ public class ComunicarConEmbebido extends AppCompatActivity
     // String for MAC address del Hc05
     private static String address = null;
 
-    String[] permissions= new String[]{
+    private static final String MOVER_BARRERA_CODE = "P";
+    private static final String AUTORIZADO_TARDE_CODE = "T";
+    private static final String AUTORIZADO_A_TIEMPO_CODE = "A";
+    private static final String NO_AUTORIZADO_CODE = "N";
+
+
+    String[] permissions = new String[]{
             android.Manifest.permission.BLUETOOTH,
             android.Manifest.permission.BLUETOOTH_ADMIN,
             android.Manifest.permission.BLUETOOTH_CONNECT,
@@ -88,12 +94,12 @@ public class ComunicarConEmbebido extends AppCompatActivity
         setContentView(R.layout.activity_comunicacion);
 
         //Se definen los componentes del layout
-        btnBarrera=(Button)findViewById(R.id.btnBarrera);
-        txtNombre=(TextView)findViewById(R.id.txtNombreChoferInfo);
-        txtApellido=(TextView)findViewById(R.id.txtApellidoInfo);
-        txtTurno=(TextView)findViewById(R.id.txtTurnoInfo);
-        txtRFID=(TextView)findViewById(R.id.txtRFIDInfo);
-        txtEstadoLlegada=(TextView)findViewById(R.id.txtHorarioLlegada);
+        btnBarrera = (Button) findViewById(R.id.btnBarrera);
+        txtNombre = (TextView) findViewById(R.id.txtNombreChoferInfo);
+        txtApellido = (TextView) findViewById(R.id.txtApellidoInfo);
+        txtTurno = (TextView) findViewById(R.id.txtTurnoInfo);
+        txtRFID = (TextView) findViewById(R.id.txtRFIDInfo);
+        txtEstadoLlegada = (TextView) findViewById(R.id.txtHorarioLlegada);
 
         //obtengo el adaptador del bluethoot
         btAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -107,50 +113,61 @@ public class ComunicarConEmbebido extends AppCompatActivity
 
         dbChoferes = new DbChoferes(ComunicarConEmbebido.this);
 
-        if(checkPermissions()) {
+        if (checkPermissions())
+        {
             // Inicializar y registrar el ActivityResultLauncher
             bluetoothActivityResultLauncher = registerForActivityResult(
                     new ActivityResultContracts.StartActivityForResult(),
-                    new ActivityResultCallback<ActivityResult>() {
+                    new ActivityResultCallback<ActivityResult>()
+                    {
                         @Override
-                        public void onActivityResult(ActivityResult result) {
-                            if (result.getResultCode() == RESULT_OK) {
+                        public void onActivityResult(ActivityResult result)
+                        {
+                            if (result.getResultCode() == RESULT_OK)
+                            {
                                 // Bluetooth ha sido habilitado
                                 showAlert("ÉXITO", "Bluetooth ha sido habilitado");
-                            } else {
+                            } else
+                            {
                                 // El usuario no habilitó Bluetooth o la solicitud fue cancelada
                                 showAlert("ERROR", "Bluetooth NO ha sido habilitado");
                             }
                         }
                     }
             );
-        }
-        else{
-           finish();
+        } else
+        {
+            finish();
         }
 
     }
 
-    private  boolean checkPermissions() {
+    private boolean checkPermissions()
+    {
         int result;
         List<String> listPermissionsNeeded = new ArrayList<>();
 
         //Se chequea si la version de Android es menor a la 6
 
 
-        for (String p:permissions) {
-            result = ContextCompat.checkSelfPermission(this,p);
-            if (result != PackageManager.PERMISSION_GRANTED) {
+        for (String p : permissions)
+        {
+            result = ContextCompat.checkSelfPermission(this, p);
+            if (result != PackageManager.PERMISSION_GRANTED)
+            {
                 listPermissionsNeeded.add(p);
             }
         }
-        if (!listPermissionsNeeded.isEmpty()) {
+        if (!listPermissionsNeeded.isEmpty())
+        {
             ActivityCompat.requestPermissions(this, listPermissionsNeeded.toArray(new String[0]), MULTIPLE_PERMISSIONS);
             return false;
         }
         return true;
     }
-    private void showAlert(String title, String text) {
+
+    private void showAlert(String title, String text)
+    {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
 
         // Configura el título y mensaje del AlertDialog
@@ -158,9 +175,11 @@ public class ComunicarConEmbebido extends AppCompatActivity
         builder.setMessage(text);
 
         // Configura el botón positivo
-        builder.setPositiveButton("Cerrar", new DialogInterface.OnClickListener() {
+        builder.setPositiveButton("Cerrar", new DialogInterface.OnClickListener()
+        {
             @Override
-            public void onClick(DialogInterface dialog, int which) {
+            public void onClick(DialogInterface dialog, int which)
+            {
                 // Acción a realizar cuando el usuario hace clic en el botón OK
                 dialog.dismiss();
             }
@@ -172,7 +191,8 @@ public class ComunicarConEmbebido extends AppCompatActivity
     }
 
     @Override
-    protected void onStart() {
+    protected void onStart()
+    {
         super.onStart();
         txtEstadoLlegada.setVisibility(View.INVISIBLE);
     }
@@ -181,30 +201,38 @@ public class ComunicarConEmbebido extends AppCompatActivity
     @Override
     //Cada vez que se detecta el evento OnResume se establece la comunicacion con el HC05, creando un
     //socketBluethoot
-    public void onResume() {
+    public void onResume()
+    {
         super.onResume();
-       if(checkPermissions()) {
+        if (checkPermissions())
+        {
             //Obtengo el parametro, aplicando un Bundle, que me indica la Mac Adress del HC05
             Intent intent = getIntent();
             Bundle extras = intent.getExtras();
 
-            address = extras.getString("Direccion_Bluethoot");
+            address = extras.getString("Direccion_Bluetooth");
 
             BluetoothDevice device = btAdapter.getRemoteDevice(address);
 
             //se realiza la conexion del Bluethoot crea y se conectandose a atraves de un socket
-            try {
+            try
+            {
                 btSocket = createBluetoothSocket(device);
-            } catch (IOException e) {
+            } catch (IOException e)
+            {
                 showToast("La creacción del Socket fallo");
             }
             // Establish the Bluetooth socket connection.
-            try {
+            try
+            {
                 btSocket.connect();
-            } catch (IOException e) {
-                try {
+            } catch (IOException e)
+            {
+                try
+                {
                     btSocket.close();
-                } catch (IOException e2) {
+                } catch (IOException e2)
+                {
                     //insert code to deal with this
                 }
             }
@@ -216,11 +244,10 @@ public class ComunicarConEmbebido extends AppCompatActivity
 
             //I send a character when resuming.beginning transmission to check device is connected
             //If it is not an exception will be thrown in the write method and finish() will be called
-            mConnectedThread.write("x");
-       }
+            mConnectedThread.write("Conexion establecida");
+        }
 
     }
-
 
 
     @Override
@@ -231,25 +258,29 @@ public class ComunicarConEmbebido extends AppCompatActivity
         try
         {
             //Don't leave Bluetooth sockets open when leaving activity
-            if(btSocket != null){
+            if (btSocket != null)
+            {
                 btSocket.close();
             }
-        } catch (IOException e2) {
+        } catch (IOException e2)
+        {
             //insert code to deal with this
         }
     }
 
     //Metodo que crea el socket bluethoot
     @SuppressLint("MissingPermission")
-    private BluetoothSocket createBluetoothSocket(BluetoothDevice device) throws IOException {
+    private BluetoothSocket createBluetoothSocket(BluetoothDevice device) throws IOException
+    {
 
-        return  device.createRfcommSocketToServiceRecord(BTMODULEUUID);
+        return device.createRfcommSocketToServiceRecord(BTMODULEUUID);
     }
 
     //Handler que sirve que permite mostrar datos en el Layout al hilo secundario
-    private Handler Handler_Msg_Hilo_Principal ()
+    private Handler Handler_Msg_Hilo_Principal()
     {
-        return  new Handler(Looper.getMainLooper()) {
+        return new Handler(Looper.getMainLooper())
+        {
             public void handleMessage(@NonNull Message msg)
             {
                 //si se recibio un msj del hilo secundario
@@ -269,34 +300,40 @@ public class ComunicarConEmbebido extends AppCompatActivity
                         recDataString.delete(0, recDataString.length());
 
                         Chofer chofer = dbChoferes.getChoferByRFID(dataInPrint);
-                        if (chofer == null) {
+                        if (chofer == null)
+                        {
                             txtNombre.setText("NO REGISTRADO");
                             txtApellido.setText("NO REGISTRADO");
                             txtTurno.setText("NO REGISTRADO");
                             txtEstadoLlegada.setText("NO AUTORIZADO");
                             txtEstadoLlegada.setVisibility(View.VISIBLE);
                             txtEstadoLlegada.setBackgroundColor(Color.RED);
-                            mConnectedThread.write("N");
-                        } else {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                LocalTime expected = LocalTime.parse( chofer.getTurno() );
-                                LocalTime now = LocalTime.now();;
-                                if (now.isAfter(expected)) {
+                            mConnectedThread.write(NO_AUTORIZADO_CODE);
+                        } else
+                        {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                            {
+                                LocalTime expected = LocalTime.parse(chofer.getTurno());
+                                LocalTime now = LocalTime.now();
+
+                                if (now.isAfter(expected))
+                                {
                                     txtNombre.setText(chofer.getNombre());
                                     txtApellido.setText(chofer.getApellido());
                                     txtTurno.setText(chofer.getTurno());
                                     txtEstadoLlegada.setVisibility(View.VISIBLE);
                                     txtEstadoLlegada.setText("AUTORIZADO - TARDE");
                                     txtEstadoLlegada.setBackgroundColor(R.color.colorBlue);
-                                    mConnectedThread.write("T");
-                                } else {
+                                    mConnectedThread.write(AUTORIZADO_TARDE_CODE);
+                                } else
+                                {
                                     txtNombre.setText(chofer.getNombre());
                                     txtApellido.setText(chofer.getApellido());
                                     txtTurno.setText(chofer.getTurno());
                                     txtEstadoLlegada.setVisibility(View.VISIBLE);
                                     txtEstadoLlegada.setText("AUTORIZADO - A TIEMPO");
                                     txtEstadoLlegada.setBackgroundColor(R.color.colorSuccess);
-                                    mConnectedThread.write("A");
+                                    mConnectedThread.write(AUTORIZADO_A_TIEMPO_CODE);
                                 }
                             }
                         }
@@ -307,18 +344,20 @@ public class ComunicarConEmbebido extends AppCompatActivity
 
     }
 
-    //Listener del boton encender que envia  msj para enceder Led a Arduino atraves del Bluethoot
-    private final View.OnClickListener btnMoverBarrera = new View.OnClickListener() {
+
+    private final View.OnClickListener btnMoverBarrera = new View.OnClickListener()
+    {
         @Override
-        public void onClick(View v) {
-            mConnectedThread.write("P");    // Send "1" via Bluetooth
-            //showToast("Encender el LED");
+        public void onClick(View v)
+        {
+            mConnectedThread.write(MOVER_BARRERA_CODE);
         }
     };
 
-    //Listener del boton encender que envia  msj para Apagar Led a Arduino atraves del Bluethoot
 
-    private void showToast(String message) {
+
+    private void showToast(String message)
+    {
         Toast.makeText(getApplicationContext(), message, Toast.LENGTH_SHORT).show();
     }
 
@@ -341,7 +380,9 @@ public class ComunicarConEmbebido extends AppCompatActivity
                 //Create I/O streams for connection
                 tmpIn = socket.getInputStream();
                 tmpOut = socket.getOutputStream();
-            } catch (IOException e) { }
+            } catch (IOException e)
+            {
+            }
 
             mmInStream = tmpIn;
             mmOutStream = tmpOut;
@@ -365,7 +406,8 @@ public class ComunicarConEmbebido extends AppCompatActivity
                     //se muestran en el layout de la activity, utilizando el handler del hilo
                     // principal antes mencionado
                     bluetoothIn.obtainMessage(handlerState, bytes, -1, readMessage).sendToTarget();
-                } catch (IOException e) {
+                } catch (IOException e)
+                {
                     break;
                 }
             }
@@ -373,11 +415,14 @@ public class ComunicarConEmbebido extends AppCompatActivity
 
 
         //write method
-        public void write(String input) {
+        public void write(String input)
+        {
             byte[] msgBuffer = input.getBytes();           //converts entered String into bytes
-            try {
+            try
+            {
                 mmOutStream.write(msgBuffer);                //write bytes over BT connection via outstream
-            } catch (IOException e) {
+            } catch (IOException e)
+            {
                 //if you cannot write, close the application
                 showToast("La conexion fallo");
                 finish();
@@ -387,16 +432,22 @@ public class ComunicarConEmbebido extends AppCompatActivity
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults)
+    {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        switch (requestCode) {
-            case MULTIPLE_PERMISSIONS: {
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+        switch (requestCode)
+        {
+            case MULTIPLE_PERMISSIONS:
+            {
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED)
+                {
                     // permissions granted.
                     //enableComponent(); // Now you call here what ever you want :)
-                } else {
+                } else
+                {
                     String perStr = "";
-                    for (String per : permissions) {
+                    for (String per : permissions)
+                    {
                         perStr += "\n" + per;
                     }
                     // permissions list of don't granted permission

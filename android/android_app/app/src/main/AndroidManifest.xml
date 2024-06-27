@@ -30,21 +30,21 @@
         android:theme="@style/Theme.Android_app"
         tools:targetApi="31">
         <activity
-            android:name=".ComunicarConEmbebido"
+            android:name="com.smartgate.ComunicarConEmbebido"
             android:exported="false" />
         <activity
-            android:name=".VerChoferActivity"
+            android:name="com.smartgate.VerChoferActivity"
             android:exported="false" />
         <activity
-            android:name=".NuevoChoferActivity"
+            android:name="com.smartgate.NuevoChoferActivity"
             android:exported="false"
             android:label="@string/title_activity_nuevo_chofer"
             android:theme="@style/Theme.Android_app" />
         <activity
-            android:name=".ListadoChoferesActivity"
+            android:name="com.smartgate.ListadoChoferesActivity"
             android:exported="false" />
         <activity
-            android:name=".MainActivity"
+            android:name="com.smartgate.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
