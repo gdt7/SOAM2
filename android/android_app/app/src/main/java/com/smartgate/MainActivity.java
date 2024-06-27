@@ -21,9 +21,11 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.example.android_app.R;
 
-
 public class MainActivity extends AppCompatActivity implements SensorEventListener
 {
+
+
+    private static final int ACCELERATION_UMBRAL = 8;
 
     private static boolean isDarkTheme = false;
     private SensorManager mSensorManager;
@@ -159,7 +161,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
                 double acceleration = Math.sqrt(x * x + y * y + z * z) - SensorManager.GRAVITY_EARTH;
 
-                if (acceleration > 8)
+
+                if (acceleration > ACCELERATION_UMBRAL)
                 {
                     toggleTheme();
                 }
