@@ -39,7 +39,7 @@ TaskHandle_t Task1;
 #define PIN_BUZZER 4
 #define SS_PIN 21   // Pin SS (Slave Select) del lector RFID
 #define RST_PIN 16 // Pin de reinicio del lector RFID
-#define UMBRAL_DIFERENCIA_TIMEOUT 3000 //15 segundos
+#define UMBRAL_DIFERENCIA_TIMEOUT 5000 // 5 segundos
 #define UMBRAL_DIFERENCIA_TIMEOUT_2 1000 // 1 segundo
 #define TIME_DIFF_BETWEEN_EXEC_CYCLES 60
 #define UMBRAL_DISTANCIA_CM 50
@@ -63,9 +63,6 @@ TaskHandle_t Task1;
 #define MITAD_VELOCIDAD_DEL_SONIDO  0.01723
 #define SEGUNDO_A_MILISEGUNDOS  1000
 #define SEGUNDO_A_MICROSEGUNDOS  1000000L
-
-// MFRC522 rfid(SS_PIN,RST_PIN);
-// MFRC522::MIFARE_KEY key;
 
 // Estructura para los sensores
 struct stSensor
@@ -167,11 +164,11 @@ void none() //aca verifica el timeout de 5 segundos,
 void pasar_a_idle()
 {
   Serial.println("Pasar a Idle");
-  // digitalWrite(PIN_PULSADOR, LOW);
+
   moverServo(ANGULO_NO_PULSADO);
   analogWrite(LED_ROJO, COLOR__ENCENDIDO);
   analogWrite(LED_VERDE, COLOR_APAGADO);
-  // digitalWrite(BUZZER, LOW);
+
   estado_actual = ST_IDLE;
   check_timeout = false;
 }
@@ -197,11 +194,7 @@ void pasar_a_barrera_abierta()
   levantar_barrera();
 
   estado_actual = ST_BARRERA_ABIERTA;
-
-    nuevo_evento = EV_CONTINUAR;
-  // if(nuevo_evento == EV_PULSADOR){
-  //   return;
-  // }
+  nuevo_evento = EV_CONTINUAR;
 }
 
 void pasar_a_barrera_abierta_m()
@@ -248,8 +241,7 @@ void start()
   // Inicializo el estado del embebido
   estado_actual = ST_IDLE;
   Servo1.attach(PIN_SERVO);
-  // SPI.begin();      // Inicializa la comunicación SPI
-  // rfid_PCD.init();      // Inicializa el lector RFID
+
   // Asigno los pines a los sensores correspondientes
   pinMode(PIN_PULSADOR_ARRIBA, INPUT);
 
@@ -283,10 +275,6 @@ void start()
 
   SerialBT.begin("CGT_VIRTUAL");
   Serial.println(SerialBT.getBtAddressString());
-
-  // Serial.println(F("This code scan the MIFARE Classsic NUID."));
-  // Serial.print(F("Using the following key:"));
-  // printHex(key.keyByte, MFRC522::MF_KEY_SIZE);
 }
 
 void fsm()
@@ -301,43 +289,28 @@ void fsm()
 
     if( nuevo_evento != EV_CONTINUAR && estado_ant != estado_actual)
     {
-      //DebugPrintEstado(states_s[estado_actual], events_s[nuevo_evento]);
       Serial.println("ESTADO ACTUAL: " + estados_string[estado_actual]);
       Serial.println("EVENTO: " + eventos_string[nuevo_evento]);
     }
-  } else 
-  {
-    /*HACER: Loguear errores*/
-    //DebugPrintEstado(estados_string[ST_ERROR], eventos_string[EV_UNKNOW]);
   }
-
-  //nuevo_evento   = EV_CONTINUAR;
 }
 
 void tomar_evento()
 {
-  /*/long ct = millis();
-  long diff = (ct - lct);
-  bool timeout = (diff > TIME_DIFF_BETWEEN_EXEC_CYCLES);
+  int index = index_verification++ % MAX_VERIFICATIONS;
+  if(verification[index]())
+  {
+    return;
+  }
 
-  /*if(timeout)
-  {*/
-    //lct = ct;
-    int index = index_verification++ % MAX_VERIFICATIONS;
-    if(verification[index]())
+  if(check_timeout)
+  {
+    if (stimeout(current_timeout_target)) 
     {
+      nuevo_evento = EV_TIMEOUT;
       return;
     }
-
-    if(check_timeout)
-    {
-      if (stimeout(current_timeout_target)) 
-      {
-        nuevo_evento = EV_TIMEOUT;
-        return;
-      }
-    }
-  //}
+  }
 
   nuevo_evento = EV_CONTINUAR;
 }
@@ -424,9 +397,7 @@ bool verificarEntradaRFID()
   if ( ! rfid.PICC_ReadCardSerial())
     return false;
 
-  //Serial.print(F("PICC type: "));
   MFRC522::PICC_Type piccType = rfid.PICC_GetType(rfid.uid.sak);
-  //Serial.println(rfid.PICC_GetTypeName(piccType));
 
   // Check is the PICC of Classic MIFARE type
   if (piccType != MFRC522::PICC_TYPE_MIFARE_MINI &&  
@@ -445,29 +416,15 @@ bool verificarEntradaRFID()
 }
 
 bool stimeout(unsigned long intervalo) {
-  /****************************/ 
-    //Serial.print("tiempo desde: ");
-    //Serial.println(tiempoDesde);
-
     long tiempoHastaAhora = millis(); //desde que se inicio el programa
-    //Serial.print("tiempo hasta ahora: ");
-    //Serial.println(tiempoHastaAhora);
-
     long tiempoQuePaso = tiempoHastaAhora - tiempoDesde;
-    //Serial.print("tiempo que paso: ");
-    //Serial.println(tiempoQuePaso);
 
     if(tiempoQuePaso > intervalo)
     {
-      //Serial.println("Retorna TRUE");
       return true;
     }else{
-      //Serial.println("Retorna FALSE");
       return false;
     }
-  /****************************/ 
-  //return (millis() - lct >= intervalo);
-
 }
 
 void customTone(byte pin, uint16_t frequency, uint16_t duration)
