@@ -39,7 +39,7 @@ TaskHandle_t Task1;
 #define PIN_BUZZER 4
 #define SS_PIN 21   // Pin SS (Slave Select) del lector RFID
 #define RST_PIN 16 // Pin de reinicio del lector RFID
-#define UMBRAL_DIFERENCIA_TIMEOUT 15000 //15 segundos
+#define UMBRAL_DIFERENCIA_TIMEOUT 3000 //15 segundos
 #define UMBRAL_DIFERENCIA_TIMEOUT_2 1000 // 1 segundo
 #define UMBRAL_DISTANCIA_CM 50
 #define CARACTER_LEER_RFID 'R'
@@ -153,7 +153,7 @@ transition state_table[MAX_ESTADOS][MAX_EVENTOS] =
         {none, none, pasar_a_idle, none, pasar_a_idle, pasar_a_barrera_abierta, none, none }, //state ST_ESPERANDO_RESPUESTA
         {none, pasar_a_idle, pasar_a_int_bajar, none, none, none, pasar_a_int_bajar, none }, //state ST_BARRERA_ABIERTA
         {none, pasar_a_idle, pasar_a_idle, none, none, none, none, none, none }, //state ST_BARRERA_ABIERTA_MANUAL
-        {none, none, pasar_a_idle, none, none, none, none, none, pasar_a_barrera_abierta } //state ST_INTENCION_BAJAR
+        {none, none, pasar_a_idle, none, none, none, none, pasar_a_idle, pasar_a_barrera_abierta } //state ST_INTENCION_BAJAR
 };
 // EVENTOS {"EV_CONTINUAR", "EV_PULSADOR", "EV_TIMEOUT", "EV_LEER_RFID", "EV_NO_AUTORIZADO", "EV_AUTORIZADO", "EV_LIBRE", "EV_OCUPADO"};
 /**********************************************************************************************/
@@ -197,10 +197,10 @@ void pasar_a_barrera_abierta()
 
   estado_actual = ST_BARRERA_ABIERTA;
 
-  if(nuevo_evento == EV_PULSADOR){
     nuevo_evento = EV_CONTINUAR;
-    return;
-  }
+  // if(nuevo_evento == EV_PULSADOR){
+  //   return;
+  // }
 }
 
 void pasar_a_barrera_abierta_m()
@@ -228,6 +228,7 @@ void pasar_a_int_bajar()
 {
   start_tiempo_desde(UMBRAL_DIFERENCIA_TIMEOUT_2);
   estado_actual = ST_INTENCION_BAJAR;
+  nuevo_evento == EV_CONTINUAR;
 }
 
 void setup()
