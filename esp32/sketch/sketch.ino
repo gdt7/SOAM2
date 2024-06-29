@@ -28,8 +28,9 @@ TaskHandle_t Task1;
 #define SENSOR_PULSADOR_ABAJO 1
 #define SENSOR_PROXIMIDAD 2
 #define SENSOR_RFID 3
-#define MAX_ESTADOS 4
-#define MAX_EVENTOS 8
+#define MAX_ESTADOS 5
+#define MAX_EVENTOS 9
+#define MAX_VERIFICATIONS 4
 
 #define TRIG_PIN 15 // Ultrasonic Sensor's TRIG pin - Pulso para comenzar con medición
 #define ECHO_PIN 5  // Ultrasonic Sensor's ECHO pin - Mide el largo del pulso para obtener la distancia
@@ -39,6 +40,7 @@ TaskHandle_t Task1;
 #define SS_PIN 21   // Pin SS (Slave Select) del lector RFID
 #define RST_PIN 16 // Pin de reinicio del lector RFID
 #define UMBRAL_DIFERENCIA_TIMEOUT 15000 //15 segundos
+#define UMBRAL_DIFERENCIA_TIMEOUT_2 1000 // 1 segundo
 #define UMBRAL_DISTANCIA_CM 50
 #define CARACTER_LEER_RFID 'R'
 #define CARACTER_AUTORIZADO_A_TIEMPO 'A'
@@ -91,9 +93,10 @@ enum estados
   ST_IDLE,
   ST_ESPERANDO_RESPUESTA,
   ST_BARRERA_ABIERTA,
-  ST_BARRERA_ABIERTA_MANUAL
+  ST_BARRERA_ABIERTA_MANUAL,
+  ST_INTENCION_BAJAR
 } estado_actual;
-String estados_string[] = {"ST_IDLE", "ST_ESPERANDO_RESPUESTA", "ST_BARRERA_ABIERTA", "ST_BARRERA_ABIERTA_MANUAL"};
+String estados_string[] = {"ST_IDLE", "ST_ESPERANDO_RESPUESTA", "ST_BARRERA_ABIERTA", "ST_BARRERA_ABIERTA_MANUAL", "ST_INTENCION_BAJAR"};
 
 // Definición de los eventos
 enum eventos
@@ -104,16 +107,17 @@ enum eventos
   EV_LEER_RIFD,
   EV_NO_AUTORIZADO,
   EV_AUTORIZADO,
-  EV_DISTANCIA
+  EV_LIBRE,
+  EV_OCUPADO
 } nuevo_evento;
-String eventos_string[] = {"EV_CONTINUAR", "EV_PULSADOR", "EV_TIMEOUT", "EV_LEER_RIFD", "EV_NO_AUTORIZADO", "EV_AUTORIZADO", "EV_DISTANCIA"};
+String eventos_string[] = {"EV_CONTINUAR", "EV_PULSADOR", "EV_TIMEOUT", "EV_LEER_RIFD", "EV_NO_AUTORIZADO", "EV_AUTORIZADO", "EV_LIBRE", "EV_OCUPADO"};
 
 // Prototipos de funciones
 void start();
 void tomar_evento();
 void moverServo(int);
-bool verificarPulsador();
-bool verificarRIFD();
+bool verificarPulsadorArriba();
+bool verificarEntradaRFID();
 bool verificarSensorProximidad();
 bool verificarBluetooth();
 void log(String mensaje);
@@ -123,11 +127,20 @@ void pasar_a_idle();
 void pasar_a_barrera_abierta();
 void pasar_a_barrera_abierta_m();
 void pasar_a_esperando_respuesta();
+void pasar_a_int_bajar();
 
-int array_rfid_autorizado[4] = {227, 24, 159, 252};
 int arrayCodigoTarjeta[4] = {0, 0, 0, 0};
 bool check_timeout = false;
-bool usar_sensor_distancia = false;
+int current_timeout_target = UMBRAL_DIFERENCIA_TIMEOUT;
+
+int index_verification = 0;
+bool verification[MAX_VERIFICATIONS] =
+{
+  verificarPulsadorArriba,
+  verificarSensorProximidad,
+  verificarEntradaRFID,
+  verificarBluetooth
+};
 
 BluetoothSerial SerialBT;
 
@@ -135,12 +148,13 @@ BluetoothSerial SerialBT;
 typedef void (*transition)();
 transition state_table[MAX_ESTADOS][MAX_EVENTOS] =
     {
-        {none, pasar_a_barrera_abierta_m, none, pasar_a_esperando_respuesta, none, none, none},//state ST_IDLE
-        {none, none, pasar_a_idle, none, pasar_a_idle, pasar_a_barrera_abierta, none},//state ST_ESPERANDO_RESPUESTA
-        {none, pasar_a_idle, pasar_a_idle, none, none, none, pasar_a_idle}, //state ST_BARRERA_ABIERTA
-        {none, pasar_a_idle, pasar_a_idle, none, none, none, none } //state ST_BARRERA_ABIERTA_MANUAL
+        {none, pasar_a_barrera_abierta_m, none, pasar_a_esperando_respuesta, none, none, none, none }, //state ST_IDLE
+        {none, none, pasar_a_idle, none, pasar_a_idle, pasar_a_barrera_abierta, none, none }, //state ST_ESPERANDO_RESPUESTA
+        {none, pasar_a_idle, pasar_a_int_bajar, none, none, none, pasar_a_int_bajar, none }, //state ST_BARRERA_ABIERTA
+        {none, pasar_a_idle, pasar_a_idle, none, none, none, none, none, none } //state ST_BARRERA_ABIERTA_MANUAL
+        {none, none, pasar_a_idle, none, none, none, none, none, pasar_a_barrera_abierta } //state ST_INTENCION_BAJAR
 };
-// EVENTOS {"EV_CONTINUAR", "EV_PULSADOR", "EV_TIMEOUT", "EV_LEER_RFID", "EV_NO_AUTORIZADO", "EV_AUTORIZADO", "EV_DISTANCIA"};
+// EVENTOS {"EV_CONTINUAR", "EV_PULSADOR", "EV_TIMEOUT", "EV_LEER_RFID", "EV_NO_AUTORIZADO", "EV_AUTORIZADO", "EV_LIBRE", "EV_OCUPADO"};
 /**********************************************************************************************/
 
 void none() //aca verifica el timeout de 5 segundos, 
@@ -158,18 +172,18 @@ void pasar_a_idle()
   // digitalWrite(BUZZER, LOW);
   estado_actual = ST_IDLE;
   check_timeout = false;
-  usar_sensor_distancia = false;
 }
 
-void start_tiempo_desde()
+void start_tiempo_desde(int timeout_target)
 {
   check_timeout = true;
+  current_timeout_target = timeout_target;
   tiempoDesde = millis();
 }
 
 void levantar_barrera()
 {
-  start_tiempo_desde();
+  start_tiempo_desde(UMBRAL_DIFERENCIA_TIMEOUT);
   Serial.println("SE PASA A BARRERA ABIERTA");
   moverServo(ANGULO_PULSADO);
   analogWrite(LED_ROJO, COLOR_APAGADO);
@@ -179,7 +193,6 @@ void levantar_barrera()
 void pasar_a_barrera_abierta()
 {
   levantar_barrera();
-  usar_sensor_distancia = true;
 
   estado_actual = ST_BARRERA_ABIERTA;
 
@@ -192,7 +205,6 @@ void pasar_a_barrera_abierta()
 void pasar_a_barrera_abierta_m()
 {
   levantar_barrera();
-  usar_sensor_distancia = false;
 
   estado_actual = ST_BARRERA_ABIERTA_MANUAL;
 
@@ -207,9 +219,14 @@ void pasar_a_esperando_respuesta()
 {
   Serial.println("Esperando autorización para poder entrar...");
   SerialBT.printf("%d %d %d %d \n", arrayCodigoTarjeta[0],arrayCodigoTarjeta[1],arrayCodigoTarjeta[2],arrayCodigoTarjeta[3]);
-  estado_actual = ST_ESPERANDO_RESPUESTA;   
-  start_tiempo_desde();
-  usar_sensor_distancia = false;
+  estado_actual = ST_ESPERANDO_RESPUESTA;
+  start_tiempo_desde(UMBRAL_DIFERENCIA_TIMEOUT);
+}
+
+void pasar_a_int_bajar()
+{
+  start_tiempo_desde(UMBRAL_DIFERENCIA_TIMEOUT_2);
+  estado_actual = ST_INTENCION_BAJAR;
 }
 
 void setup()
@@ -296,16 +313,23 @@ void fsm()
 
 void tomar_evento()
 {
-  if(verificarPulsadorArriba()
-    || verificarSensorProximidad() || verificarEntradaRFID() //|| verificarEntradaAutorizacion()
-    || verificarBluetooth())
+  int index = index_verification++ % MAX_VERIFICATIONS;
+  if(verification[index]())
   {
     return;
   }
 
+
+  // if(verificarPulsadorArriba()
+  //   || verificarSensorProximidad() || verificarEntradaRFID()
+  //   || verificarBluetooth())
+  // {
+  //   return;
+  // }
+
   if(check_timeout)
   {
-    if (stimeout(UMBRAL_DIFERENCIA_TIMEOUT)) 
+    if (stimeout(current_timeout_target)) 
     {
       nuevo_evento = EV_TIMEOUT;
       return;
@@ -360,49 +384,22 @@ float leerSensorDistancia()
 
 bool verificarSensorProximidad()
 {
-  if(!usar_sensor_distancia){
-    return false;
-  }
   sensores[SENSOR_PROXIMIDAD].valor_actual_analogico = leerSensorDistancia();
 
   float valor_actual = sensores[SENSOR_PROXIMIDAD].valor_actual_analogico;
 
   if(valor_actual > UMBRAL_DISTANCIA_CM) //si la distancia es mayor de 50
   {
-    nuevo_evento = EV_DISTANCIA;
+    nuevo_evento = EV_LIBRE;
+    return true;
+  }
+  else 
+  {
+    nuevo_evento = EV_OCUPADO;
     return true;
   }
 
   return false;
-}
-
-bool verificarEntradaAutorizacion(){
-
-  //Si está en 0 no debe entrar a evaluar autorización
-  if(arrayCodigoTarjeta[0] == 0 && arrayCodigoTarjeta[1] == 0 &&
-    arrayCodigoTarjeta[2] == 0 && arrayCodigoTarjeta[3] == 0 ) {
-      return false;
-  }
-
-  if (arrayCodigoTarjeta[0] != array_rfid_autorizado[0] || 
-    arrayCodigoTarjeta[1] != array_rfid_autorizado[1] || 
-    arrayCodigoTarjeta[2] != array_rfid_autorizado[2] || 
-    arrayCodigoTarjeta[3] != array_rfid_autorizado[3] ) {
-      nuevo_evento = EV_AUTORIZADO;
-      arrayCodigoTarjeta[0] = 0;
-      arrayCodigoTarjeta[1] = 0;
-      arrayCodigoTarjeta[2] = 0;
-      arrayCodigoTarjeta[3] = 0;
-      return true;
-  } 
-
-  arrayCodigoTarjeta[0] = 0;
-  arrayCodigoTarjeta[1] = 0;
-  arrayCodigoTarjeta[2] = 0;
-  arrayCodigoTarjeta[3] = 0;
-  nuevo_evento = EV_NO_AUTORIZADO;
-  playTuneSecondCore(TaskPlayAccessDenied, "Denegado");
-  return true;
 }
 
 bool verificarEntradaRFID()
@@ -526,9 +523,12 @@ void TaskPlayBoot(void * pvParameters)
   vTaskDelete(NULL);
 }
 
-bool verificarBluetooth(){
-  if(SerialBT.available()){
-    switch(SerialBT.read()){
+bool verificarBluetooth()
+{
+  if(SerialBT.available())
+  {
+    switch(SerialBT.read())
+    {
       case 'A':
         nuevo_evento = EV_AUTORIZADO;
         break;
