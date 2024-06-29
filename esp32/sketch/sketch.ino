@@ -134,7 +134,8 @@ bool check_timeout = false;
 int current_timeout_target = UMBRAL_DIFERENCIA_TIMEOUT;
 
 int index_verification = 0;
-bool verification[MAX_VERIFICATIONS] =
+typedef bool (*verif)();
+verif verification[MAX_VERIFICATIONS] =
 {
   verificarPulsadorArriba,
   verificarSensorProximidad,
@@ -151,7 +152,7 @@ transition state_table[MAX_ESTADOS][MAX_EVENTOS] =
         {none, pasar_a_barrera_abierta_m, none, pasar_a_esperando_respuesta, none, none, none, none }, //state ST_IDLE
         {none, none, pasar_a_idle, none, pasar_a_idle, pasar_a_barrera_abierta, none, none }, //state ST_ESPERANDO_RESPUESTA
         {none, pasar_a_idle, pasar_a_int_bajar, none, none, none, pasar_a_int_bajar, none }, //state ST_BARRERA_ABIERTA
-        {none, pasar_a_idle, pasar_a_idle, none, none, none, none, none, none } //state ST_BARRERA_ABIERTA_MANUAL
+        {none, pasar_a_idle, pasar_a_idle, none, none, none, none, none, none }, //state ST_BARRERA_ABIERTA_MANUAL
         {none, none, pasar_a_idle, none, none, none, none, none, pasar_a_barrera_abierta } //state ST_INTENCION_BAJAR
 };
 // EVENTOS {"EV_CONTINUAR", "EV_PULSADOR", "EV_TIMEOUT", "EV_LEER_RFID", "EV_NO_AUTORIZADO", "EV_AUTORIZADO", "EV_LIBRE", "EV_OCUPADO"};
