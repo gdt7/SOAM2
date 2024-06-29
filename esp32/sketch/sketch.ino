@@ -29,7 +29,7 @@ TaskHandle_t Task1;
 #define SENSOR_PROXIMIDAD 2
 #define SENSOR_RFID 3
 #define MAX_ESTADOS 5
-#define MAX_EVENTOS 9
+#define MAX_EVENTOS 8
 #define MAX_VERIFICATIONS 4
 
 #define TRIG_PIN 15 // Ultrasonic Sensor's TRIG pin - Pulso para comenzar con medición
@@ -149,11 +149,11 @@ BluetoothSerial SerialBT;
 typedef void (*transition)();
 transition state_table[MAX_ESTADOS][MAX_EVENTOS] =
     {
-        {none, pasar_a_barrera_abierta_m, none, pasar_a_esperando_respuesta, none, none, none, none }, //state ST_IDLE
-        {none, none, pasar_a_idle, none, pasar_a_idle, pasar_a_barrera_abierta, none, none }, //state ST_ESPERANDO_RESPUESTA
-        {none, pasar_a_idle, pasar_a_int_bajar, none, none, none, pasar_a_int_bajar, none }, //state ST_BARRERA_ABIERTA
+        {none, pasar_a_barrera_abierta_m, none, pasar_a_esperando_respuesta, none, none, none }, //state ST_IDLE
+        {none, none, pasar_a_idle, none, pasar_a_idle, pasar_a_barrera_abierta, none }, //state ST_ESPERANDO_RESPUESTA
+        {none, pasar_a_idle, pasar_a_int_bajar, none, none, pasar_a_int_bajar, none }, //state ST_BARRERA_ABIERTA
         {none, pasar_a_idle, pasar_a_idle, none, none, none, none, none, none }, //state ST_BARRERA_ABIERTA_MANUAL
-        {none, none, pasar_a_idle, none, none, none, none, pasar_a_idle, pasar_a_barrera_abierta } //state ST_INTENCION_BAJAR
+        {none, none, pasar_a_idle, none, none, none, pasar_a_idle, pasar_a_barrera_abierta } //state ST_INTENCION_BAJAR
 };
 // EVENTOS {"EV_CONTINUAR", "EV_PULSADOR", "EV_TIMEOUT", "EV_LEER_RFID", "EV_NO_AUTORIZADO", "EV_AUTORIZADO", "EV_LIBRE", "EV_OCUPADO"};
 /**********************************************************************************************/
