@@ -1,4 +1,4 @@
-package com.example.android_app.ui.theme
+package com.smartgate.theme
 
 import androidx.compose.ui.graphics.Color
 

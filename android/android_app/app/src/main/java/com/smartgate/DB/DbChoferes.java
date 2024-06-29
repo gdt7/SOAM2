@@ -1,4 +1,4 @@
-package com.example.android_app.DB;
+package com.smartgate.DB;
 
 import android.content.ContentValues;
 import android.content.Context;
@@ -7,24 +7,28 @@ import android.database.sqlite.SQLiteDatabase;
 
 import androidx.annotation.Nullable;
 
-import com.example.android_app.entidades.Chofer;
+import com.smartgate.entidades.Chofer;
 
 import java.util.ArrayList;
 
-public class DbChoferes extends DbHelper{
+public class DbChoferes extends DbHelper
+{
 
     Context context;
 
-    public DbChoferes(@Nullable Context context) {
+    public DbChoferes(@Nullable Context context)
+    {
         super(context);
         this.context = context;
     }
 
-    public long insertarChofer(String nombre, String apellido, String turno, String codigoRFID) {
+    public long insertarChofer(String nombre, String apellido, String turno, String codigoRFID)
+    {
 
         long id = 0;
 
-        try {
+        try
+        {
             DbHelper dbHelper = new DbHelper(context);
             SQLiteDatabase db = dbHelper.getWritableDatabase();
 
@@ -35,14 +39,16 @@ public class DbChoferes extends DbHelper{
             values.put("codigorfid", codigoRFID);
 
             id = db.insert(TABLE_CHOFERES, null, values);
-        } catch (Exception ex) {
+        } catch (Exception ex)
+        {
             ex.toString();
         }
 
         return id;
     }
 
-    public ArrayList<Chofer> mostrarChoferes() {
+    public ArrayList<Chofer> mostrarChoferes()
+    {
 
         DbHelper dbHelper = new DbHelper(context);
         SQLiteDatabase db = dbHelper.getWritableDatabase();
@@ -53,8 +59,10 @@ public class DbChoferes extends DbHelper{
 
         cursorChoferes = db.rawQuery("SELECT * FROM " + TABLE_CHOFERES + " ORDER BY nombre ASC", null);
 
-        if (cursorChoferes.moveToFirst()) {
-            do {
+        if (cursorChoferes.moveToFirst())
+        {
+            do
+            {
                 chofer = new Chofer();
                 chofer.setId(cursorChoferes.getInt(0));
                 chofer.setNombre(cursorChoferes.getString(1));
@@ -70,7 +78,8 @@ public class DbChoferes extends DbHelper{
         return listaChoferes;
     }
 
-    public Chofer verChofer(int id) {
+    public Chofer verChofer(int id)
+    {
 
         DbHelper dbHelper = new DbHelper(context);
         SQLiteDatabase db = dbHelper.getWritableDatabase();
@@ -80,7 +89,8 @@ public class DbChoferes extends DbHelper{
 
         cursorChoferes = db.rawQuery("SELECT * FROM " + TABLE_CHOFERES + " WHERE id = " + id + " LIMIT 1", null);
 
-        if (cursorChoferes.moveToFirst()) {
+        if (cursorChoferes.moveToFirst())
+        {
             chofer = new Chofer();
             chofer.setId(cursorChoferes.getInt(0));
             chofer.setNombre(cursorChoferes.getString(1));
@@ -94,7 +104,8 @@ public class DbChoferes extends DbHelper{
         return chofer;
     }
 
-    public Chofer getChoferByRFID(String rfid) {
+    public Chofer getChoferByRFID(String rfid)
+    {
 
         DbHelper dbHelper = new DbHelper(context);
         SQLiteDatabase db = dbHelper.getWritableDatabase();
@@ -104,7 +115,8 @@ public class DbChoferes extends DbHelper{
 
         cursorChoferes = db.rawQuery("SELECT * FROM " + TABLE_CHOFERES + " WHERE codigorfid = \"" + rfid + "\" LIMIT 1", null);
 
-        if (cursorChoferes.moveToFirst()) {
+        if (cursorChoferes.moveToFirst())
+        {
             chofer = new Chofer();
             chofer.setId(cursorChoferes.getInt(0));
             chofer.setNombre(cursorChoferes.getString(1));
@@ -118,39 +130,47 @@ public class DbChoferes extends DbHelper{
         return chofer;
     }
 
-    public boolean editarChofer(int id, String nombre, String apellido, String turno, String codigoRFID) {
+    public boolean editarChofer(int id, String nombre, String apellido, String turno, String codigoRFID)
+    {
 
         boolean correcto = false;
 
         DbHelper dbHelper = new DbHelper(context);
         SQLiteDatabase db = dbHelper.getWritableDatabase();
 
-        try {
+        try
+        {
             db.execSQL("UPDATE " + TABLE_CHOFERES + " SET nombre = '" + nombre + "', apellido = '" + apellido + "', turno = '" + turno + "', codigorfid = '" + codigoRFID + "' WHERE id='" + id + "' ");
             correcto = true;
-        } catch (Exception ex) {
+        } catch (Exception ex)
+        {
             ex.toString();
             correcto = false;
-        } finally {
+        } finally
+        {
             db.close();
         }
         return correcto;
     }
 
-    public boolean eliminarChofer(int id) {
+    public boolean eliminarChofer(int id)
+    {
 
         boolean correcto = false;
 
         DbHelper dbHelper = new DbHelper(context);
         SQLiteDatabase db = dbHelper.getWritableDatabase();
 
-        try {
+        try
+        {
             db.execSQL("DELETE FROM " + TABLE_CHOFERES + " WHERE id = '" + id + "'");
             correcto = true;
-        } catch (Exception ex) {
+        } catch (Exception ex)
+        {
             ex.toString();
             correcto = false;
-        } finally {
+        } finally
+        {
             db.close();
         }
 

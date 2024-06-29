@@ -1,4 +1,4 @@
-package com.example.android_app;
+package com.smartgate;
 
 import android.app.Dialog;
 import android.content.Context;
@@ -8,16 +8,19 @@ import android.widget.TextView;
 
 import com.example.android_app.R;
 
-public class LoadingDialogBar {
+public class LoadingDialogBar
+{
     Context context;
     Dialog dialog;
 
-    public LoadingDialogBar(Context context){
+    public LoadingDialogBar(Context context)
+    {
         this.context = context;
         dialog = new Dialog(context);
     }
 
-    public void ShowDialog(String title) {
+    public void ShowDialog(String title)
+    {
 
         dialog.setContentView(R.layout.dialog);
         dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
@@ -29,7 +32,8 @@ public class LoadingDialogBar {
         dialog.show();
     }
 
-    public void HideDialog(){
+    public void HideDialog()
+    {
         dialog.dismiss();
     }
 }

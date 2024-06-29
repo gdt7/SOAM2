@@ -1,4 +1,4 @@
-package com.example.android_app;
+package com.smartgate;
 
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -16,11 +16,13 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-import com.example.android_app.DB.DbChoferes;
-import com.example.android_app.entidades.Chofer;
+import com.example.android_app.R;
+import com.smartgate.DB.DbChoferes;
+import com.smartgate.entidades.Chofer;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
-public class VerChoferActivity extends AppCompatActivity {
+public class VerChoferActivity extends AppCompatActivity
+{
 
     EditText txtNombre, txtApellido, txtTurno, txtCodigo;
     Button btnGuardar;
@@ -31,11 +33,13 @@ public class VerChoferActivity extends AppCompatActivity {
     int id = 0;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(Bundle savedInstanceState)
+    {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_ver_chofer);
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) ->
+        {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
@@ -49,21 +53,26 @@ public class VerChoferActivity extends AppCompatActivity {
         fabEliminar = findViewById(R.id.fabEliminar);
         btnGuardar = findViewById(R.id.btnGuardarChofer);
 
-        if(savedInstanceState == null){
+        if (savedInstanceState == null)
+        {
             Bundle extras = getIntent().getExtras();
-            if(extras == null){
+            if (extras == null)
+            {
                 id = Integer.parseInt(null);
-            } else {
+            } else
+            {
                 id = extras.getInt("ID");
             }
-        } else {
+        } else
+        {
             id = (int) savedInstanceState.getSerializable("ID");
         }
 
         DbChoferes dbChoferes = new DbChoferes(VerChoferActivity.this);
         chofer = dbChoferes.verChofer(id);
 
-        if(chofer != null){
+        if (chofer != null)
+        {
             txtNombre.setText(chofer.getNombre());
             txtApellido.setText(chofer.getApellido());
             txtTurno.setText(chofer.getTurno());
@@ -76,9 +85,11 @@ public class VerChoferActivity extends AppCompatActivity {
             txtCodigo.setInputType(InputType.TYPE_NULL);
         }
 
-        fabEditar.setOnClickListener(new View.OnClickListener() {
+        fabEditar.setOnClickListener(new View.OnClickListener()
+        {
             @Override
-            public void onClick(View view) {
+            public void onClick(View view)
+            {
                 txtNombre.setInputType(InputType.TYPE_CLASS_TEXT);
                 txtApellido.setInputType(InputType.TYPE_CLASS_TEXT);
                 txtTurno.setInputType(InputType.TYPE_CLASS_TEXT);
@@ -95,49 +106,63 @@ public class VerChoferActivity extends AppCompatActivity {
             }
         });
 
-        fabEliminar.setOnClickListener(new View.OnClickListener() {
+        fabEliminar.setOnClickListener(new View.OnClickListener()
+        {
             @Override
-            public void onClick(View view) {
+            public void onClick(View view)
+            {
                 AlertDialog.Builder builder = new AlertDialog.Builder(VerChoferActivity.this);
                 builder.setMessage("¿Desea eliminar este chofer?")
-                        .setPositiveButton("SI", new DialogInterface.OnClickListener() {
+                        .setPositiveButton("SI", new DialogInterface.OnClickListener()
+                        {
                             @Override
-                            public void onClick(DialogInterface dialogInterface, int i) {
+                            public void onClick(DialogInterface dialogInterface, int i)
+                            {
 
-                                if(dbChoferes.eliminarChofer(id)){
+                                if (dbChoferes.eliminarChofer(id))
+                                {
                                     verRegistro();
                                 }
                             }
                         })
-                        .setNegativeButton("NO", new DialogInterface.OnClickListener() {
+                        .setNegativeButton("NO", new DialogInterface.OnClickListener()
+                        {
                             @Override
-                            public void onClick(DialogInterface dialogInterface, int i) {
+                            public void onClick(DialogInterface dialogInterface, int i)
+                            {
 
                             }
                         }).show();
             }
         });
 
-        btnGuardar.setOnClickListener(new View.OnClickListener() {
+        btnGuardar.setOnClickListener(new View.OnClickListener()
+        {
             @Override
-            public void onClick(View view) {
-                if (!txtNombre.getText().toString().equals("") && !txtApellido.getText().toString().equals("")) {
+            public void onClick(View view)
+            {
+                if (!txtNombre.getText().toString().equals("") && !txtApellido.getText().toString().equals(""))
+                {
                     correcto = dbChoferes.editarChofer(id, txtNombre.getText().toString(), txtApellido.getText().toString(), txtTurno.getText().toString(), txtCodigo.getText().toString());
 
-                    if(correcto){
+                    if (correcto)
+                    {
                         Toast.makeText(VerChoferActivity.this, "REGISTRO MODIFICADO", Toast.LENGTH_LONG).show();
                         verRegistro();
-                    } else {
+                    } else
+                    {
                         Toast.makeText(VerChoferActivity.this, "ERROR AL MODIFICAR REGISTRO", Toast.LENGTH_LONG).show();
                     }
-                } else {
+                } else
+                {
                     Toast.makeText(VerChoferActivity.this, "DEBE LLENAR LOS CAMPOS OBLIGATORIOS", Toast.LENGTH_LONG).show();
                 }
             }
         });
     }
 
-    private void verRegistro(){
+    private void verRegistro()
+    {
         Intent intent = new Intent(this, ListadoChoferesActivity.class);
         startActivity(intent);
     }

@@ -1,4 +1,4 @@
-package com.example.android_app;
+package com.smartgate;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -13,9 +13,11 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-import com.example.android_app.DB.DbChoferes;
+import com.example.android_app.R;
+import com.smartgate.DB.DbChoferes;
 
-public class NuevoChoferActivity extends AppCompatActivity {
+public class NuevoChoferActivity extends AppCompatActivity
+{
 
     EditText txtNombre;
     EditText txtApellido;
@@ -25,11 +27,13 @@ public class NuevoChoferActivity extends AppCompatActivity {
     Button btnGuardarChofer;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(Bundle savedInstanceState)
+    {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_nuevo_chofer);
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) ->
+        {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
@@ -41,10 +45,12 @@ public class NuevoChoferActivity extends AppCompatActivity {
         txtCodigo = findViewById(R.id.txtCodigo);
         btnGuardarChofer = findViewById(R.id.btnGuardarChofer);
 
-        btnGuardarChofer.setOnClickListener(new View.OnClickListener(){
+        btnGuardarChofer.setOnClickListener(new View.OnClickListener()
+        {
 
             @Override
-            public void onClick(View v) {
+            public void onClick(View v)
+            {
                 DbChoferes dbChoferes = new DbChoferes(NuevoChoferActivity.this);
                 long id = dbChoferes.insertarChofer(
                         txtNombre.getText().toString(),
@@ -53,10 +59,12 @@ public class NuevoChoferActivity extends AppCompatActivity {
                         txtCodigo.getText().toString()
                 );
 
-                if(id > 0) {
+                if (id > 0)
+                {
                     Toast.makeText(NuevoChoferActivity.this, "REGISTRO GUARDADO", Toast.LENGTH_LONG);
                     verRegistro();
-                } else {
+                } else
+                {
                     Toast.makeText(NuevoChoferActivity.this, "ERROR AL GUARDAR REGISTRO", Toast.LENGTH_LONG);
                 }
 
@@ -64,11 +72,14 @@ public class NuevoChoferActivity extends AppCompatActivity {
         });
     }
 
-    private void verRegistro(){
+    private void verRegistro()
+    {
         Intent intent = new Intent(this, ListadoChoferesActivity.class);
         startActivity(intent);
     }
-    private void limpiar(){
+
+    private void limpiar()
+    {
         txtNombre.setText("");
         txtApellido.setText("");
         txtTurno.setText("");
