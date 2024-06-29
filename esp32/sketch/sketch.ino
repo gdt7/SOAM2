@@ -41,6 +41,7 @@ TaskHandle_t Task1;
 #define RST_PIN 16 // Pin de reinicio del lector RFID
 #define UMBRAL_DIFERENCIA_TIMEOUT 3000 //15 segundos
 #define UMBRAL_DIFERENCIA_TIMEOUT_2 1000 // 1 segundo
+#define TIME_DIFF_BETWEEN_EXEC_CYCLES 50
 #define UMBRAL_DISTANCIA_CM 50
 #define CARACTER_LEER_RFID 'R'
 #define CARACTER_AUTORIZADO_A_TIEMPO 'A'
@@ -152,7 +153,7 @@ transition state_table[MAX_ESTADOS][MAX_EVENTOS] =
         {none, pasar_a_barrera_abierta_m, none, pasar_a_esperando_respuesta, none, none, none }, //state ST_IDLE
         {none, none, pasar_a_idle, none, pasar_a_idle, pasar_a_barrera_abierta, none }, //state ST_ESPERANDO_RESPUESTA
         {none, pasar_a_idle, pasar_a_int_bajar, none, none, pasar_a_int_bajar, none }, //state ST_BARRERA_ABIERTA
-        {none, pasar_a_idle, pasar_a_idle, none, none, none, none, none, none }, //state ST_BARRERA_ABIERTA_MANUAL
+        {none, pasar_a_idle, pasar_a_idle, none, none, none, none, none }, //state ST_BARRERA_ABIERTA_MANUAL
         {none, none, pasar_a_idle, none, none, none, pasar_a_idle, pasar_a_barrera_abierta } //state ST_INTENCION_BAJAR
 };
 // EVENTOS {"EV_CONTINUAR", "EV_PULSADOR", "EV_TIMEOUT", "EV_LEER_RFID", "EV_NO_AUTORIZADO", "EV_AUTORIZADO", "EV_LIBRE", "EV_OCUPADO"};
@@ -315,26 +316,27 @@ void fsm()
 
 void tomar_evento()
 {
-  int index = index_verification++ % MAX_VERIFICATIONS;
-  if(verification[index]())
+  short index = 0;
+  long ct = millis();
+  long diff = (ct - lct);
+  bool timeout = (diff > TIME_DIFF_BETWEEN_EXEC_CYCLES);
+
+  if(timeout)
   {
-    return;
-  }
-
-
-  // if(verificarPulsadorArriba()
-  //   || verificarSensorProximidad() || verificarEntradaRFID()
-  //   || verificarBluetooth())
-  // {
-  //   return;
-  // }
-
-  if(check_timeout)
-  {
-    if (stimeout(current_timeout_target)) 
+    lct = ct;
+    int index = index_verification++ % MAX_VERIFICATIONS;
+    if(verification[index]())
     {
-      nuevo_evento = EV_TIMEOUT;
       return;
+    }
+
+    if(check_timeout)
+    {
+      if (stimeout(current_timeout_target)) 
+      {
+        nuevo_evento = EV_TIMEOUT;
+        return;
+      }
     }
   }
 
