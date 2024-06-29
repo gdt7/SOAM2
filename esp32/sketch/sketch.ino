@@ -21,7 +21,7 @@ byte nuidPICC[4];
 TaskHandle_t Task1;
 
 #define PIN_PULSADOR_ARRIBA 34
-#define PIN_SERVO 33
+#define PIN_SERVO 25
 
 #define MAX_CANT_SENSORES 4
 #define SENSOR_PULSADOR_ARRIBA 0
@@ -41,7 +41,7 @@ TaskHandle_t Task1;
 #define RST_PIN 16 // Pin de reinicio del lector RFID
 #define UMBRAL_DIFERENCIA_TIMEOUT 3000 //15 segundos
 #define UMBRAL_DIFERENCIA_TIMEOUT_2 1000 // 1 segundo
-#define TIME_DIFF_BETWEEN_EXEC_CYCLES 50
+#define TIME_DIFF_BETWEEN_EXEC_CYCLES 60
 #define UMBRAL_DISTANCIA_CM 50
 #define CARACTER_LEER_RFID 'R'
 #define CARACTER_AUTORIZADO_A_TIEMPO 'A'
@@ -150,11 +150,11 @@ BluetoothSerial SerialBT;
 typedef void (*transition)();
 transition state_table[MAX_ESTADOS][MAX_EVENTOS] =
     {
-        {none, pasar_a_barrera_abierta_m, none, pasar_a_esperando_respuesta, none, none, none }, //state ST_IDLE
-        {none, none, pasar_a_idle, none, pasar_a_idle, pasar_a_barrera_abierta, none }, //state ST_ESPERANDO_RESPUESTA
-        {none, pasar_a_idle, pasar_a_int_bajar, none, none, pasar_a_int_bajar, none }, //state ST_BARRERA_ABIERTA
+        {none, pasar_a_barrera_abierta_m, none, pasar_a_esperando_respuesta, none, none, none,none }, //state ST_IDLE
+        {none, none, pasar_a_idle, none, pasar_a_idle, pasar_a_barrera_abierta, none, none }, //state ST_ESPERANDO_RESPUESTA
+        {none, pasar_a_idle, pasar_a_int_bajar, none, none, pasar_a_int_bajar, pasar_a_int_bajar, none }, //state ST_BARRERA_ABIERTA
         {none, pasar_a_idle, pasar_a_idle, none, none, none, none, none }, //state ST_BARRERA_ABIERTA_MANUAL
-        {none, none, pasar_a_idle, none, none, none, pasar_a_idle, pasar_a_barrera_abierta } //state ST_INTENCION_BAJAR
+        {none, none, pasar_a_idle, none, none, none, none, pasar_a_barrera_abierta } //state ST_INTENCION_BAJAR
 };
 // EVENTOS {"EV_CONTINUAR", "EV_PULSADOR", "EV_TIMEOUT", "EV_LEER_RFID", "EV_NO_AUTORIZADO", "EV_AUTORIZADO", "EV_LIBRE", "EV_OCUPADO"};
 /**********************************************************************************************/
@@ -316,14 +316,13 @@ void fsm()
 
 void tomar_evento()
 {
-  short index = 0;
-  long ct = millis();
+  /*/long ct = millis();
   long diff = (ct - lct);
   bool timeout = (diff > TIME_DIFF_BETWEEN_EXEC_CYCLES);
 
-  if(timeout)
-  {
-    lct = ct;
+  /*if(timeout)
+  {*/
+    //lct = ct;
     int index = index_verification++ % MAX_VERIFICATIONS;
     if(verification[index]())
     {
@@ -338,7 +337,7 @@ void tomar_evento()
         return;
       }
     }
-  }
+  //}
 
   nuevo_evento = EV_CONTINUAR;
 }
@@ -388,6 +387,15 @@ float leerSensorDistancia()
 
 bool verificarSensorProximidad()
 {
+  long ct = millis();
+  long diff = (ct - lct);
+  bool timeout = (diff > TIME_DIFF_BETWEEN_EXEC_CYCLES);
+
+  if(!timeout)
+  {
+    return false;
+  }
+  lct = ct;
   sensores[SENSOR_PROXIMIDAD].valor_actual_analogico = leerSensorDistancia();
 
   float valor_actual = sensores[SENSOR_PROXIMIDAD].valor_actual_analogico;
