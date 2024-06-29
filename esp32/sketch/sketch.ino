@@ -21,15 +21,16 @@ byte nuidPICC[4];
 TaskHandle_t Task1;
 
 #define PIN_PULSADOR_ARRIBA 34
-#define PIN_SERVO 33
+#define PIN_SERVO 25
 
 #define MAX_CANT_SENSORES 4
 #define SENSOR_PULSADOR_ARRIBA 0
 #define SENSOR_PULSADOR_ABAJO 1
 #define SENSOR_PROXIMIDAD 2
 #define SENSOR_RFID 3
-#define MAX_ESTADOS 4
+#define MAX_ESTADOS 5
 #define MAX_EVENTOS 8
+#define MAX_VERIFICATIONS 4
 
 #define TRIG_PIN 15 // Ultrasonic Sensor's TRIG pin - Pulso para comenzar con medición
 #define ECHO_PIN 5  // Ultrasonic Sensor's ECHO pin - Mide el largo del pulso para obtener la distancia
@@ -38,7 +39,9 @@ TaskHandle_t Task1;
 #define PIN_BUZZER 4
 #define SS_PIN 21   // Pin SS (Slave Select) del lector RFID
 #define RST_PIN 16 // Pin de reinicio del lector RFID
-#define UMBRAL_DIFERENCIA_TIMEOUT 15000 //15 segundos
+#define UMBRAL_DIFERENCIA_TIMEOUT 5000 // 5 segundos
+#define UMBRAL_DIFERENCIA_TIMEOUT_2 1000 // 1 segundo
+#define TIME_DIFF_BETWEEN_EXEC_CYCLES 60
 #define UMBRAL_DISTANCIA_CM 50
 #define CARACTER_LEER_RFID 'R'
 #define CARACTER_AUTORIZADO_A_TIEMPO 'A'
@@ -60,9 +63,6 @@ TaskHandle_t Task1;
 #define MITAD_VELOCIDAD_DEL_SONIDO  0.01723
 #define SEGUNDO_A_MILISEGUNDOS  1000
 #define SEGUNDO_A_MICROSEGUNDOS  1000000L
-
-// MFRC522 rfid(SS_PIN,RST_PIN);
-// MFRC522::MIFARE_KEY key;
 
 // Estructura para los sensores
 struct stSensor
@@ -91,9 +91,10 @@ enum estados
   ST_IDLE,
   ST_ESPERANDO_RESPUESTA,
   ST_BARRERA_ABIERTA,
-  ST_BARRERA_ABIERTA_MANUAL
+  ST_BARRERA_ABIERTA_MANUAL,
+  ST_INTENCION_BAJAR
 } estado_actual;
-String estados_string[] = {"ST_IDLE", "ST_ESPERANDO_RESPUESTA", "ST_BARRERA_ABIERTA", "ST_BARRERA_ABIERTA_MANUAL"};
+String estados_string[] = {"ST_IDLE", "ST_ESPERANDO_RESPUESTA", "ST_BARRERA_ABIERTA", "ST_BARRERA_ABIERTA_MANUAL", "ST_INTENCION_BAJAR"};
 
 // Definición de los eventos
 enum eventos
@@ -104,16 +105,17 @@ enum eventos
   EV_LEER_RIFD,
   EV_NO_AUTORIZADO,
   EV_AUTORIZADO,
-  EV_DISTANCIA
+  EV_LIBRE,
+  EV_OCUPADO
 } nuevo_evento;
-String eventos_string[] = {"EV_CONTINUAR", "EV_PULSADOR", "EV_TIMEOUT", "EV_LEER_RIFD", "EV_NO_AUTORIZADO", "EV_AUTORIZADO", "EV_DISTANCIA"};
+String eventos_string[] = {"EV_CONTINUAR", "EV_PULSADOR", "EV_TIMEOUT", "EV_LEER_RIFD", "EV_NO_AUTORIZADO", "EV_AUTORIZADO", "EV_LIBRE", "EV_OCUPADO"};
 
 // Prototipos de funciones
 void start();
 void tomar_evento();
 void moverServo(int);
-bool verificarPulsador();
-bool verificarRIFD();
+bool verificarPulsadorArriba();
+bool verificarEntradaRFID();
 bool verificarSensorProximidad();
 bool verificarBluetooth();
 void log(String mensaje);
@@ -123,10 +125,21 @@ void pasar_a_idle();
 void pasar_a_barrera_abierta();
 void pasar_a_barrera_abierta_m();
 void pasar_a_esperando_respuesta();
+void pasar_a_int_bajar();
 
-int array_rfid_autorizado[4] = {227, 24, 159, 252};
 int arrayCodigoTarjeta[4] = {0, 0, 0, 0};
 bool check_timeout = false;
+int current_timeout_target = UMBRAL_DIFERENCIA_TIMEOUT;
+
+int index_verification = 0;
+typedef bool (*verif)();
+verif verification[MAX_VERIFICATIONS] =
+{
+  verificarPulsadorArriba,
+  verificarSensorProximidad,
+  verificarEntradaRFID,
+  verificarBluetooth
+};
 
 BluetoothSerial SerialBT;
 
@@ -134,12 +147,13 @@ BluetoothSerial SerialBT;
 typedef void (*transition)();
 transition state_table[MAX_ESTADOS][MAX_EVENTOS] =
     {
-        {none, pasar_a_barrera_abierta_m, none, pasar_a_esperando_respuesta, none, none, none},//state ST_IDLE
-        {none, none, pasar_a_idle, none, pasar_a_idle, pasar_a_barrera_abierta, none},//state ST_ESPERANDO_RESPUESTA
-        {none, pasar_a_idle, pasar_a_idle, none, none, none, pasar_a_idle}, //state ST_BARRERA_ABIERTA
-        {none, pasar_a_idle, pasar_a_idle, none, none, none, none } //state ST_BARRERA_ABIERTA_MANUAL
+        {none, pasar_a_barrera_abierta_m, none, pasar_a_esperando_respuesta, none, none, none,none }, //state ST_IDLE
+        {none, none, pasar_a_idle, none, pasar_a_idle, pasar_a_barrera_abierta, none, none }, //state ST_ESPERANDO_RESPUESTA
+        {none, pasar_a_idle, pasar_a_int_bajar, none, none, pasar_a_int_bajar, pasar_a_int_bajar, none }, //state ST_BARRERA_ABIERTA
+        {none, pasar_a_idle, pasar_a_idle, none, none, none, none, none }, //state ST_BARRERA_ABIERTA_MANUAL
+        {none, none, pasar_a_idle, none, none, none, none, pasar_a_barrera_abierta } //state ST_INTENCION_BAJAR
 };
-// EVENTOS {"EV_CONTINUAR", "EV_PULSADOR", "EV_TIMEOUT", "EV_LEER_RFID", "EV_NO_AUTORIZADO", "EV_AUTORIZADO", "EV_DISTANCIA"};
+// EVENTOS {"EV_CONTINUAR", "EV_PULSADOR", "EV_TIMEOUT", "EV_LEER_RFID", "EV_NO_AUTORIZADO", "EV_AUTORIZADO", "EV_LIBRE", "EV_OCUPADO"};
 /**********************************************************************************************/
 
 void none() //aca verifica el timeout de 5 segundos, 
@@ -150,24 +164,25 @@ void none() //aca verifica el timeout de 5 segundos,
 void pasar_a_idle()
 {
   Serial.println("Pasar a Idle");
-  // digitalWrite(PIN_PULSADOR, LOW);
+
   moverServo(ANGULO_NO_PULSADO);
   analogWrite(LED_ROJO, COLOR__ENCENDIDO);
   analogWrite(LED_VERDE, COLOR_APAGADO);
-  // digitalWrite(BUZZER, LOW);
+
   estado_actual = ST_IDLE;
   check_timeout = false;
 }
 
-void start_tiempo_desde()
+void start_tiempo_desde(int timeout_target)
 {
   check_timeout = true;
+  current_timeout_target = timeout_target;
   tiempoDesde = millis();
 }
 
 void levantar_barrera()
 {
-  start_tiempo_desde();
+  start_tiempo_desde(UMBRAL_DIFERENCIA_TIMEOUT);
   Serial.println("SE PASA A BARRERA ABIERTA");
   moverServo(ANGULO_PULSADO);
   analogWrite(LED_ROJO, COLOR_APAGADO);
@@ -179,11 +194,7 @@ void pasar_a_barrera_abierta()
   levantar_barrera();
 
   estado_actual = ST_BARRERA_ABIERTA;
-
-  if(nuevo_evento == EV_PULSADOR){
-    nuevo_evento = EV_CONTINUAR;
-    return;
-  }
+  nuevo_evento = EV_CONTINUAR;
 }
 
 void pasar_a_barrera_abierta_m()
@@ -203,8 +214,15 @@ void pasar_a_esperando_respuesta()
 {
   Serial.println("Esperando autorización para poder entrar...");
   SerialBT.printf("%d %d %d %d \n", arrayCodigoTarjeta[0],arrayCodigoTarjeta[1],arrayCodigoTarjeta[2],arrayCodigoTarjeta[3]);
-  estado_actual = ST_ESPERANDO_RESPUESTA;   
-  start_tiempo_desde();
+  estado_actual = ST_ESPERANDO_RESPUESTA;
+  start_tiempo_desde(UMBRAL_DIFERENCIA_TIMEOUT);
+}
+
+void pasar_a_int_bajar()
+{
+  start_tiempo_desde(UMBRAL_DIFERENCIA_TIMEOUT_2);
+  estado_actual = ST_INTENCION_BAJAR;
+  nuevo_evento == EV_CONTINUAR;
 }
 
 void setup()
@@ -223,8 +241,7 @@ void start()
   // Inicializo el estado del embebido
   estado_actual = ST_IDLE;
   Servo1.attach(PIN_SERVO);
-  // SPI.begin();      // Inicializa la comunicación SPI
-  // rfid_PCD.init();      // Inicializa el lector RFID
+
   // Asigno los pines a los sensores correspondientes
   pinMode(PIN_PULSADOR_ARRIBA, INPUT);
 
@@ -257,10 +274,7 @@ void start()
   }
 
   SerialBT.begin("CGT_VIRTUAL");
-
-  // Serial.println(F("This code scan the MIFARE Classsic NUID."));
-  // Serial.print(F("Using the following key:"));
-  // printHex(key.keyByte, MFRC522::MF_KEY_SIZE);
+  Serial.println(SerialBT.getBtAddressString());
 }
 
 void fsm()
@@ -275,31 +289,23 @@ void fsm()
 
     if( nuevo_evento != EV_CONTINUAR && estado_ant != estado_actual)
     {
-      //DebugPrintEstado(states_s[estado_actual], events_s[nuevo_evento]);
       Serial.println("ESTADO ACTUAL: " + estados_string[estado_actual]);
       Serial.println("EVENTO: " + eventos_string[nuevo_evento]);
     }
-  } else 
-  {
-    /*HACER: Loguear errores*/
-    //DebugPrintEstado(estados_string[ST_ERROR], eventos_string[EV_UNKNOW]);
   }
-
-  //nuevo_evento   = EV_CONTINUAR;
 }
 
 void tomar_evento()
 {
-  if(verificarPulsadorArriba()
-    || verificarSensorProximidad() || verificarEntradaRFID() //|| verificarEntradaAutorizacion()
-    || verificarBluetooth())
+  int index = index_verification++ % MAX_VERIFICATIONS;
+  if(verification[index]())
   {
     return;
   }
 
   if(check_timeout)
   {
-    if (stimeout(UMBRAL_DIFERENCIA_TIMEOUT)) 
+    if (stimeout(current_timeout_target)) 
     {
       nuevo_evento = EV_TIMEOUT;
       return;
@@ -354,46 +360,31 @@ float leerSensorDistancia()
 
 bool verificarSensorProximidad()
 {
+  long ct = millis();
+  long diff = (ct - lct);
+  bool timeout = (diff > TIME_DIFF_BETWEEN_EXEC_CYCLES);
+
+  if(!timeout)
+  {
+    return false;
+  }
+  lct = ct;
   sensores[SENSOR_PROXIMIDAD].valor_actual_analogico = leerSensorDistancia();
 
   float valor_actual = sensores[SENSOR_PROXIMIDAD].valor_actual_analogico;
 
   if(valor_actual > UMBRAL_DISTANCIA_CM) //si la distancia es mayor de 50
   {
-    nuevo_evento = EV_DISTANCIA;
+    nuevo_evento = EV_LIBRE;
+    return true;
+  }
+  else 
+  {
+    nuevo_evento = EV_OCUPADO;
     return true;
   }
 
   return false;
-}
-
-bool verificarEntradaAutorizacion(){
-
-  //Si está en 0 no debe entrar a evaluar autorización
-  if(arrayCodigoTarjeta[0] == 0 && arrayCodigoTarjeta[1] == 0 &&
-    arrayCodigoTarjeta[2] == 0 && arrayCodigoTarjeta[3] == 0 ) {
-      return false;
-  }
-
-  if (arrayCodigoTarjeta[0] != array_rfid_autorizado[0] || 
-    arrayCodigoTarjeta[1] != array_rfid_autorizado[1] || 
-    arrayCodigoTarjeta[2] != array_rfid_autorizado[2] || 
-    arrayCodigoTarjeta[3] != array_rfid_autorizado[3] ) {
-      nuevo_evento = EV_AUTORIZADO;
-      arrayCodigoTarjeta[0] = 0;
-      arrayCodigoTarjeta[1] = 0;
-      arrayCodigoTarjeta[2] = 0;
-      arrayCodigoTarjeta[3] = 0;
-      return true;
-  } 
-
-  arrayCodigoTarjeta[0] = 0;
-  arrayCodigoTarjeta[1] = 0;
-  arrayCodigoTarjeta[2] = 0;
-  arrayCodigoTarjeta[3] = 0;
-  nuevo_evento = EV_NO_AUTORIZADO;
-  playTuneSecondCore(TaskPlayAccessDenied, "Denegado");
-  return true;
 }
 
 bool verificarEntradaRFID()
@@ -406,9 +397,7 @@ bool verificarEntradaRFID()
   if ( ! rfid.PICC_ReadCardSerial())
     return false;
 
-  //Serial.print(F("PICC type: "));
   MFRC522::PICC_Type piccType = rfid.PICC_GetType(rfid.uid.sak);
-  //Serial.println(rfid.PICC_GetTypeName(piccType));
 
   // Check is the PICC of Classic MIFARE type
   if (piccType != MFRC522::PICC_TYPE_MIFARE_MINI &&  
@@ -427,29 +416,15 @@ bool verificarEntradaRFID()
 }
 
 bool stimeout(unsigned long intervalo) {
-  /****************************/ 
-    //Serial.print("tiempo desde: ");
-    //Serial.println(tiempoDesde);
-
     long tiempoHastaAhora = millis(); //desde que se inicio el programa
-    //Serial.print("tiempo hasta ahora: ");
-    //Serial.println(tiempoHastaAhora);
-
     long tiempoQuePaso = tiempoHastaAhora - tiempoDesde;
-    //Serial.print("tiempo que paso: ");
-    //Serial.println(tiempoQuePaso);
 
     if(tiempoQuePaso > intervalo)
     {
-      //Serial.println("Retorna TRUE");
       return true;
     }else{
-      //Serial.println("Retorna FALSE");
       return false;
     }
-  /****************************/ 
-  //return (millis() - lct >= intervalo);
-
 }
 
 void customTone(byte pin, uint16_t frequency, uint16_t duration)
@@ -517,9 +492,12 @@ void TaskPlayBoot(void * pvParameters)
   vTaskDelete(NULL);
 }
 
-bool verificarBluetooth(){
-  if(SerialBT.available()){
-    switch(SerialBT.read()){
+bool verificarBluetooth()
+{
+  if(SerialBT.available())
+  {
+    switch(SerialBT.read())
+    {
       case 'A':
         nuevo_evento = EV_AUTORIZADO;
         break;
