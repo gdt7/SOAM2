@@ -64,6 +64,8 @@ TaskHandle_t Task1;
 #define SEGUNDO_A_MILISEGUNDOS  1000
 #define SEGUNDO_A_MICROSEGUNDOS  1000000L
 
+#define CANT_KEYBYTES 6
+
 // Estructura para los sensores
 struct stSensor
 {
@@ -203,7 +205,8 @@ void pasar_a_barrera_abierta_m()
 
   estado_actual = ST_BARRERA_ABIERTA_MANUAL;
 
-  if(nuevo_evento == EV_PULSADOR){
+  if(nuevo_evento == EV_PULSADOR)
+  {
     nuevo_evento = EV_CONTINUAR;
     return;
   }
@@ -269,7 +272,8 @@ void start()
   SPI.begin(); // Init SPI bus
   rfid.PCD_Init(); // Init MFRC522 
 
-  for (byte i = 0; i < 6; i++) {
+  for (byte i = 0; i < CANT_KEYBYTES; i++)
+  {
     key.keyByte[i] = 0xFF;
   }
 
@@ -332,7 +336,8 @@ bool verificarPulsadorArriba()
   {
     previousDebounceTime = millis(); 
     // ENCENDER PULSADOR
-    if(valor_actual_aux == HIGH){
+    if(valor_actual_aux == HIGH)
+    {
       Serial.println("PULSADOR ARRIBA ENCENDIDO!");
       nuevo_evento = EV_PULSADOR;
       sensores[SENSOR_PULSADOR_ARRIBA].valor_previo_digital = valor_actual_aux;
@@ -402,12 +407,14 @@ bool verificarEntradaRFID()
   // Check is the PICC of Classic MIFARE type
   if (piccType != MFRC522::PICC_TYPE_MIFARE_MINI &&  
     piccType != MFRC522::PICC_TYPE_MIFARE_1K &&
-    piccType != MFRC522::PICC_TYPE_MIFARE_4K) {
+    piccType != MFRC522::PICC_TYPE_MIFARE_4K)
+  {
     Serial.println(F("Tu tarjeta no es del tipo MIFARE Classic."));
     return false;
   }
 
-  for (byte i = 0; i < rfid.uid.size; i++) {
+  for (byte i = 0; i < rfid.uid.size; i++)
+  {
     arrayCodigoTarjeta[i] = rfid.uid.uidByte[i];
   }
 
@@ -415,7 +422,8 @@ bool verificarEntradaRFID()
   return true;
 }
 
-bool stimeout(unsigned long intervalo) {
+bool stimeout(unsigned long intervalo)
+{
     long tiempoHastaAhora = millis(); //desde que se inicio el programa
     long tiempoQuePaso = tiempoHastaAhora - tiempoDesde;
 
